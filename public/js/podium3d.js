@@ -139,7 +139,7 @@ function show(canvas, top3) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   } catch (e) { return false; }
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   scene = new THREE.Scene();
   scene.background = new THREE.Color('#070b1a');
   scene.fog = new THREE.Fog('#070b1a', 30, 70);

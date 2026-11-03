@@ -1,0 +1,13 @@
+{
+  "name": "E1 – Equation 1",
+  "short_name": "E1",
+  "description": "F1-style racing for up to 10 friends",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0d0f14",
+  "theme_color": "#0d0f14",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

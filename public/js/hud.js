@@ -69,7 +69,7 @@ const Hud = (() => {
     el.textContent = text;
     box.appendChild(el);
     setTimeout(() => el.remove(), 3200);
-    while (box.children.length > 3) box.firstChild.remove();
+    while (box.children.length > 2) box.firstChild.remove();   // at most 2 at a time
   }
 
 

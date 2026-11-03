@@ -24,6 +24,21 @@
   /* ---------------- Small helpers ---------------- */
 
   if (Input.isTouch) document.body.classList.add('touch');
+
+  /* ---------------- Phones: always landscape ----------------
+     On Android, the first tap switches to full screen and locks the screen sideways.
+     (iPhones don't allow websites to do this, so a "turn your phone" screen is shown instead.) */
+  function goLandscape() {
+    if (!Input.isTouch) return;
+    const el = document.documentElement;
+    const fs = el.requestFullscreen || el.webkitRequestFullscreen;
+    const lock = () => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* not supported */ } };
+    if (fs && !document.fullscreenElement && !document.webkitFullscreenElement) {
+      try { const p = fs.call(el, { navigationUI: 'hide' }); if (p && p.then) p.then(lock).catch(lock); else lock(); } catch (e) { lock(); }
+    } else lock();
+  }
+  document.addEventListener('pointerdown', goLandscape, { capture: true });
+  document.getElementById('btn-landscape').addEventListener('click', goLandscape);
   Input.setupTouch();
 
   // Remember the player's name and offline settings (if the browser allows it)

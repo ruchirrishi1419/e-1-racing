@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#c8170c"/>
+  <g transform="skewX(-14) translate(70 0)">
+    <rect x="40" y="170" width="90" height="22" rx="11" fill="#ffcc00"/>
+    <rect x="70" y="220" width="60" height="22" rx="11" fill="#ffcc00" opacity="0.7"/>
+    <text x="130" y="340" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="230" fill="#ffffff">E1</text>
+  </g>
+</svg>

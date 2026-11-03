@@ -31,7 +31,7 @@ import { setupEnvironment } from './env3d.js';
 
 /* ---------------- Quality presets (Graphics: Low / Medium / High) ---------------- */
 const QUALITY = {
-  low:    { pixelRatio: 0.75, antialias: true,  fogFar: 2600, post: false, samples: 0, mirror: 160, mirrorEvery: 3, tv: 0,   tvEvery: 0 },
+  low:    { pixelRatio: 2,    antialias: true,  fogFar: 2600, post: false, samples: 0, mirror: 160, mirrorEvery: 3, tv: 0,   tvEvery: 0 },
   medium: { pixelRatio: 1,    antialias: false, fogFar: 3600, post: true,  samples: 2, mirror: 256, mirrorEvery: 2, tv: 256, tvEvery: 8 },
   high:   { pixelRatio: 1.5,  antialias: false, fogFar: 4800, post: true,  samples: 4, mirror: 384, mirrorEvery: 1, tv: 384, tvEvery: 4 }
 };
@@ -58,6 +58,7 @@ let cockpit = null;         // my steering wheel and gloves
 let mirror = null, tv = null;
 let shake = 0, steerVis = 0, frameNo = 0;
 let camOverride = null;
+let maxPR = 1, curPR = 1, fpsTime = 0, fpsFrames = 0;   // automatic sharpness (keeps it smooth on slower phones)
 let myParts = null;          // my helmet and visor (hidden in the Cockpit view)
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 
@@ -142,7 +143,10 @@ function buildScene(timeOfDay) {
   camera.layers.enable(1);          // layer 1 = crowd and trees (skipped by mirrors and TV cameras)
 
   renderer.shadowMap.enabled = qName !== 'low';
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
+  // Sharp picture: draw at the screen's full resolution (up to 2x on high-detail phone screens)
+  maxPR = Math.min(window.devicePixelRatio || 1, q.pixelRatio);
+  curPR = maxPR;
+  renderer.setPixelRatio(curPR);
 
   const t0 = performance.now();
   world = buildTrack({ scene, track, quality: qName, renderer });
@@ -324,6 +328,16 @@ function frame(data) {
   if (!scene) return;
   const dt = data.dt, me = data.me;
   frameNo++;
+  // Every 2 seconds: if the game runs slowly, lower the sharpness a little; if fast, raise it again
+  fpsTime += dt; fpsFrames++;
+  if (fpsTime > 2) {
+    const fps = fpsFrames / fpsTime;
+    let pr = curPR;
+    if (fps < 40 && curPR > 1) pr = Math.max(1, curPR - 0.25);
+    else if (fps > 57 && curPR < maxPR) pr = Math.min(maxPR, curPR + 0.25);
+    if (pr !== curPR) { curPR = pr; renderer.setPixelRatio(curPR); }
+    fpsTime = 0; fpsFrames = 0;
+  }
   renderer.info.reset();
 
   // Resize the drawing area if the window changed

@@ -323,10 +323,10 @@ body.touch .toasts { bottom: auto; top: 70px; }
 .lb-row.me { background: rgba(255, 204, 0, 0.28); box-shadow: inset 3px 0 0 #ffcc00; }
 
 /* ---------------- Overtake banners ---------------- */
-.overtakes { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+.overtakes { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
 .overtake {
-  background: linear-gradient(90deg, rgba(200, 23, 12, 0.92), rgba(120, 10, 6, 0.92));
-  color: #fff; font-weight: 800; padding: 6px 16px; border-radius: 6px; font-size: 15px;
+  background: linear-gradient(90deg, rgba(200, 23, 12, 0.75), rgba(120, 10, 6, 0.75));
+  color: #fff; font-weight: 800; padding: 4px 12px; border-radius: 6px; font-size: 13px;
   border-left: 4px solid var(--accent-2); animation: toast-in 0.25s ease-out; white-space: nowrap;
 }
 .overtake.mine { background: linear-gradient(90deg, rgba(255, 204, 0, 0.95), rgba(255, 140, 0, 0.95)); color: #111; }
@@ -334,7 +334,8 @@ body.touch .toasts { bottom: auto; top: 70px; }
 /* ---------------- Helmet view: soft dark edges ---------------- */
 .visor { position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(ellipse 75% 70% at 50% 60%, transparent 62%, rgba(0, 0, 0, 0.55) 100%); }
-body.touch .overtakes { top: 120px; }
+body.touch .overtakes { top: 56px; }
+body.touch .overtake { font-size: 11px; padding: 3px 10px; border-left-width: 3px; }
 
 /* ---------------- Controls guide ---------------- */
 .controls-btn { width: 100%; margin-top: 12px; font-size: 15px; }
@@ -369,3 +370,12 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-bottom-w
 
 /* 3D podium on the results screen */
 .podium-canvas { width: 100%; height: clamp(220px, 42vw, 360px); display: block; border-radius: 14px; margin-top: 10px; background: #070b1a; }
+
+/* ---------------- Phones held upright: "turn your phone" screen ---------------- */
+.rotate-overlay { display: none; position: fixed; inset: 0; z-index: 100; background: #0d0f14;
+  flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 8px; }
+.rotate-overlay h2 { font-family: var(--font-title); font-style: italic; margin: 8px 0 0; }
+.rotate-overlay p { color: var(--muted); margin: 0 0 14px; }
+.rotate-phone { font-size: 72px; animation: rotate-hint 2s ease-in-out infinite; }
+@keyframes rotate-hint { 0%, 25% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (pointer: coarse) { .rotate-overlay { display: flex; } }
