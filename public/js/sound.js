@@ -237,6 +237,12 @@ const Sound = (() => {
   const crash = strength => burst(0.25, Math.min(0.6, 0.15 + strength / 500), 'lowpass', 700);
   const bump = () => burst(0.12, 0.25, 'lowpass', 1200);
   const click = () => tone(1200, 0.05, 'square', 0.08);
+  // Firework: a whoosh, then a bang and crackles
+  const firework = () => {
+    burst(0.5, 0.07, 'highpass', 2500);
+    burst(0.45, 0.28, 'lowpass', 600, 0.25);
+    for (let i = 0; i < 6; i++) burst(0.04, 0.08, 'bandpass', 2000 + Math.random() * 3000, 0.35 + Math.random() * 0.5);
+  };
   const finish = () => {
     [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.35, 'triangle', 0.22, i * 0.13));
     cheer(1.2);
@@ -253,5 +259,5 @@ const Sound = (() => {
   }
 
   return { init, startEngine, updateEngine, stopEngine, updateOthers, updateCrowd, cheer, stopWorld,
-           countdown, go, lap, bestLap, crash, bump, click, finish, toggleMute, setVolume };
+           countdown, go, lap, bestLap, crash, bump, click, finish, firework, toggleMute, setVolume };
 })();

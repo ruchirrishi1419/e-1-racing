@@ -219,6 +219,8 @@
     <div class="results">
       <h1 class="results-title">RACE RESULTS</h1>
       <p id="results-sub" class="results-sub"></p>
+      <!-- 3D podium: top 3 drivers and fireworks -->
+      <canvas id="podium-canvas" class="podium-canvas"></canvas>
       <table class="results-table">
         <thead><tr><th>Pos</th><th>Driver</th><th>Total time</th><th>Best lap</th></tr></thead>
         <tbody id="results-body"></tbody>
@@ -275,5 +277,6 @@
     { "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/" } }
   </script>
   <script type="module" src="js/render3d.js"></script>
+  <script type="module" src="js/podium3d.js"></script>
 </body>
 </html>

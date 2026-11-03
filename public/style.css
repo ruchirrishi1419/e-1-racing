@@ -366,3 +366,6 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-bottom-w
 .color-option.team-option { aspect-ratio: auto; max-height: none; height: 44px; text-align: left; padding: 0 10px;
   font-family: var(--font); font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); border-width: 2px; }
 .color-option.team-option.mine { border-color: #ffcc00; box-shadow: 0 0 0 2px #ffcc00; }
+
+/* 3D podium on the results screen */
+.podium-canvas { width: 100%; height: clamp(220px, 42vw, 360px); display: block; border-radius: 14px; margin-top: 10px; background: #070b1a; }

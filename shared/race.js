@@ -13,7 +13,7 @@
   'use strict';
 
   const MAX_PLAYERS = 10;
-  const MIN_LAPS = 3, MAX_LAPS = 7;
+  const MIN_LAPS = 2, MAX_LAPS = 5;
   const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
 
   // The 10 teams. Players pick a team; the car's whole paint scheme (livery) comes with it.

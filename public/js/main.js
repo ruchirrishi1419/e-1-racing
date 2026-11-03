@@ -32,6 +32,7 @@
     Object.assign(offline, JSON.parse(localStorage.getItem('e1-offline') || '{}'));
   } catch (e) { /* not allowed - that's fine */ }
   if (!Tracks.list[offline.trackId]) offline.trackId = 0;   // e.g. a track that no longer exists
+  offline.laps = Math.max(RaceRules.MIN_LAPS, Math.min(RaceRules.MAX_LAPS, offline.laps));   // laps are now 2-5
   if (!RaceRules.COLORS.some(c => c.id === offline.color)) offline.color = RaceRules.COLORS[0].id;   // old color -> first team
   function saveOffline() { try { localStorage.setItem('e1-offline', JSON.stringify(offline)); } catch (e) { /* ignore */ } }
 
@@ -238,6 +239,7 @@
   });
 
   function toMainMenu() {
+    if (window.Podium) Podium.stop();
     hideControls();
     if (mode === 'online' && currentCode) socket.emit('leaveRoom');
     Offline.stop();
@@ -346,6 +348,7 @@
 
   const RaceEvents = {
     raceStart(data) {
+      if (window.Podium) Podium.stop();
       Sound.init();
       raceInfo = data;
       show('race');
@@ -420,6 +423,8 @@
 
     results(r) {
       Game.stop();
+      // 3D podium with the top 3 (after the results screen is visible, below)
+      setTimeout(() => { if (window.Podium) Podium.show($('podium-canvas'), r.rows.slice(0, 3).map(x => ({ name: x.name, colorId: x.color }))); }, 50);
       Hud.setLights(0);
       Hud.clearMessage();
       Hud.finishTimer(null);
@@ -463,6 +468,7 @@
   /* ---------------- Results buttons ---------------- */
 
   $('btn-race-again').addEventListener('click', () => {
+    if (window.Podium) Podium.stop();
     if (mode === 'offline') {
       show('offline');
       renderOffline();
