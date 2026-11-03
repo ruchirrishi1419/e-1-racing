@@ -24,7 +24,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { buildCar, buildCockpit } from './car3d.js';
+import { buildCar } from './car3d.js';
 import { buildTrack } from './track3d.js';
 import { buildScenery } from './scenery3d.js';
 import { setupEnvironment } from './env3d.js';
@@ -37,8 +37,10 @@ const QUALITY = {
 };
 
 // The driver's eyes, in the car's own coordinates (x = forward, y = up, z = right)
-const EYE = new THREE.Vector3(-2.0, 6.15, 0);
-const WHEEL_POS = new THREE.Vector3(1.05, 4.9, 0);
+// T-cam: the onboard camera on top of the car, just above and behind the driver's helmet
+// (the helmet is at x = -2.8, the airbox behind it is about 8 high)
+const EYE = new THREE.Vector3(-11.5, 10.2, 0);
+const LOOK = new THREE.Vector3(150, 1, 0);   // the point it looks at, far ahead on the track
 
 let renderer = null, canvas = null, currentAntialias = null, roomEnv = null;
 let scene = null, camera = null, composer = null, bloomPass = null, blurPass = null;
@@ -223,15 +225,7 @@ function addCar(id, colorHex, name, number) {
 
   if (id === myId) {
     label.visible = false;          // no need to see my own name
-    built.helmet.visible = false;   // the camera is inside my helmet
-    built.visor.visible = false;
-    // steering wheel, gloves and arms
-    cockpit = buildCockpit({ colorHex, quality: qName });
-    const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0), new THREE.Vector3(-1, 0, 0));
-    cockpit.pivot.quaternion.setFromRotationMatrix(basis);
-    cockpit.pivot.rotateX(-0.42);     // lean the top of the wheel away from the driver
-    cockpit.pivot.position.copy(WHEEL_POS);
-    group.add(cockpit.pivot);
+    // (T-cam view: the helmet stays visible in front of the camera)
     // mirror glass that shows the picture from the rear camera
     [1, -1].forEach(side => {
       const glass = new THREE.CircleGeometry(1, 20).scale(0.31, 0.36, 1).rotateY(-Math.PI / 2);
@@ -348,11 +342,11 @@ function frame(data) {
   const amp = speedRatio * speedRatio * 0.35 + shake * 2 + rumble * Math.min(1, speedRatio * 3);
   const jitter = () => (Math.random() - 0.5) * 2 * amp;
 
-  // Halo cockpit camera: at the driver's eyes, looking forward
+  // T-cam: on top of the car behind the helmet, looking forward (it leans with hills and banking)
   if (mine) {
     mine.group.updateMatrixWorld();
     camera.position.copy(EYE).applyMatrix4(mine.group.matrixWorld);
-    tmpV.set(EYE.x + 100, EYE.y - 9, 0).applyMatrix4(mine.group.matrixWorld);
+    tmpV.copy(LOOK).applyMatrix4(mine.group.matrixWorld);
     camera.up.set(0, 1, 0).applyQuaternion(mine.group.quaternion);
     camera.lookAt(tmpV);
     camera.rotateX(jitter() * 0.0035);

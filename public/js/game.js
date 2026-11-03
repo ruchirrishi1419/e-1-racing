@@ -103,7 +103,7 @@ const Game = (() => {
       canvas: document.getElementById('game-3d'), track, myId,
       players: opts.players, quality: opts.quality, timeOfDay: opts.timeOfDay
     }));
-    document.getElementById('visor').classList.toggle('hidden', !use3D);
+    document.getElementById('visor').classList.add('hidden');   // only used by the cockpit view
     canvas.classList.toggle('off', use3D);
     document.getElementById('game-3d').classList.toggle('off', !use3D);
 

@@ -34,6 +34,35 @@ export function tex(name, repeat = 1, isColor = true) {
   return t;
 }
 
+// The asphalt photo, turned into a neutral gray (real race tracks are gray, not brown).
+// mean = average brightness (0-255), contrast = how strong the little details are.
+export function grayTex(name, mean = 118, contrast = 1.25) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  const img = new Image();
+  img.onload = () => {
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, 512, 512);
+    const d = g.getImageData(0, 0, 512, 512), p = d.data;
+    let sum = 0;
+    for (let i = 0; i < p.length; i += 4) sum += 0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2];
+    const avg = sum / (p.length / 4);
+    for (let i = 0; i < p.length; i += 4) {
+      const l = 0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2];
+      const v = Math.max(0, Math.min(255, mean + (l - avg) * contrast));
+      p[i] = p[i + 1] = v; p[i + 2] = Math.min(255, v + 3);   // a tiny cool tint, like fresh tarmac
+    }
+    g.putImageData(d, 0, 0);
+    t.needsUpdate = true;
+  };
+  img.src = 'assets/textures/' + name + '.jpg';
+  return t;
+}
+
 // Simple canvas texture helper
 export function canvasTex(w, h, draw, opts = {}) {
   const c = document.createElement('canvas');
@@ -305,7 +334,7 @@ export function buildTrack(ctx) {
 
   /* --- Road --- */
   const all = [[0, n - 1], [n - 1, 0]];
-  const asphalt = M({ map: tex('asphalt_track_diff'), normalMap: std ? tex('asphalt_track_nor', 1, false) : null, roughness: 0.82, metalness: 0, color: std ? '#bfc0c4' : new THREE.Color().setScalar(2.2) });   // Low has no sky reflections, so brighten the road itself
+  const asphalt = M({ map: grayTex('asphalt_track_diff'), normalMap: std ? tex('asphalt_track_nor', 1, false) : null, roughness: 0.82, metalness: 0, color: '#ffffff' });
   const road = new THREE.Mesh(ribbon(track, an, heightAt, all, -hw, hw, 0.6, 'tile'), asphalt);
   road.receiveShadow = true;
   group.add(road);

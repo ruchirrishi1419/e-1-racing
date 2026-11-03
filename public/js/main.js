@@ -47,27 +47,18 @@
 
   function myId() { return mode === 'offline' ? Offline.PLAYER_ID : socket.id; }
 
-  // Graphics level for the 3D view: 'low', 'medium' or 'high'
-  // (phones start on 'low' so they stay smooth)
-  function graphicsQuality() {
-    try { const saved = localStorage.getItem('e1-graphics'); if (saved) return saved; } catch (e) { /* ignore */ }
-    return Input.isTouch ? 'low' : 'medium';
-  }
+  // The game always uses Low graphics (fastest on every laptop and phone)
+  function graphicsQuality() { return 'low'; }
   function getSetting(key, fallback) {
     try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; }
   }
   function setSetting(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* ignore */ } }
 
-  /* ---------------- Main menu settings: Graphics, Racing line, Volume ---------------- */
+  /* ---------------- Main menu settings: Racing line, Volume ---------------- */
   function renderSettings() {
-    const g = graphicsQuality(), line = getSetting('e1-line', 'on');
-    $('set-graphics').querySelectorAll('button').forEach(b => b.classList.toggle('selected', b.dataset.v === g));
+    const line = getSetting('e1-line', 'on');
     $('set-line').querySelectorAll('button').forEach(b => b.classList.toggle('selected', b.dataset.v === line));
   }
-  $('set-graphics').addEventListener('click', e => {
-    if (!e.target.dataset.v) return;
-    setSetting('e1-graphics', e.target.dataset.v); renderSettings();
-  });
   $('set-line').addEventListener('click', e => {
     if (!e.target.dataset.v) return;
     setSetting('e1-line', e.target.dataset.v); renderSettings();
