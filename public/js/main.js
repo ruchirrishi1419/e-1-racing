@@ -32,6 +32,7 @@
     Object.assign(offline, JSON.parse(localStorage.getItem('e1-offline') || '{}'));
   } catch (e) { /* not allowed - that's fine */ }
   if (!Tracks.list[offline.trackId]) offline.trackId = 0;   // e.g. a track that no longer exists
+  if (!RaceRules.COLORS.some(c => c.id === offline.color)) offline.color = RaceRules.COLORS[0].id;   // old color -> first team
   function saveOffline() { try { localStorage.setItem('e1-offline', JSON.stringify(offline)); } catch (e) { /* ignore */ } }
 
   function show(name) {
@@ -138,8 +139,12 @@
     RaceRules.COLORS.forEach(c => {
       const owner = c.id !== mine && takenBy[c.id];
       const btn = document.createElement('button');
-      btn.className = 'color-option' + (c.id === mine ? ' mine' : owner ? ' taken' : '');
-      btn.style.background = c.hex;
+      btn.className = 'color-option team-option' + (c.id === mine ? ' mine' : owner ? ' taken' : '');
+      // team card: the livery colors as stripes, with the team name
+      btn.style.background = `linear-gradient(135deg, ${c.hex} 0 58%, ${c.second} 58% 82%, ${c.accent} 82% 100%)`;
+      btn.style.color = c.text;
+      btn.innerHTML = '<span></span>';
+      btn.firstChild.textContent = c.label;
       btn.title = owner ? `${c.label} (${owner})` : c.label;
       btn.setAttribute('aria-label', btn.title);
       btn.addEventListener('click', () => { if (!owner) { Sound.click(); onPick(c.id); } });

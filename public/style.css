@@ -360,3 +360,9 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-bottom-w
 
 /* Camera view button: shows the current view's name */
 .icon-btn.view-btn { width: auto; border-radius: 21px; padding: 0 14px; font-size: 14px; font-weight: 800; font-family: var(--font); }
+
+/* Team cards (pick a team = the car's livery) */
+.color-picker:has(.team-option) { grid-template-columns: repeat(2, 1fr); }
+.color-option.team-option { aspect-ratio: auto; max-height: none; height: 44px; text-align: left; padding: 0 10px;
+  font-family: var(--font); font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); border-width: 2px; }
+.color-option.team-option.mine { border-color: #ffcc00; box-shadow: 0 0 0 2px #ffcc00; }

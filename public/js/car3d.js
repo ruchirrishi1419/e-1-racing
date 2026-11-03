@@ -354,16 +354,22 @@ function roundRect(g, x, y, w, h, r) {
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
 }
 
-// Pick colors that look good with the player's main color
+// The team's livery colors (from RaceRules.COLORS). If the color isn't a team, make a palette.
 function palette(hex) {
+  const team = ((globalThis.RaceRules && globalThis.RaceRules.COLORS) || []).find(t => t.hex === hex);
+  if (team) {
+    return { main: team.hex, deep: team.second, accent: team.accent, text: team.text, wing: team.wing, name: team.label.toUpperCase() };
+  }
   const c = new THREE.Color(hex);
   const lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
   const dark = lum > 0.55;
   return {
     main: hex,
     accent: dark ? '#14161c' : '#ffffff',          // stripes
-    text: dark ? '#14161c' : '#ffffff',            // sponsor writing
-    deep: '#' + c.clone().multiplyScalar(0.55).getHexString() // darker shade of the main color
+    text: dark ? '#14161c' : '#ffffff',            // writing
+    deep: '#' + c.clone().multiplyScalar(0.55).getHexString(), // darker shade of the main color
+    wing: hex,
+    name: 'NEXA FUEL'
   };
 }
 
@@ -413,9 +419,10 @@ function liveryTextures(colorHex, number, name) {
     g.fillStyle = P.deep;
     g.fillRect(u(-9), H * 0.17, W, H * 0.05);
     g.fillRect(u(-9), H * 0.78, W, H * 0.05);
-    // thin stripe along the top of the nose
+    // thin stripe along the top of the nose, and the nose tip in the team's accent color
     g.fillStyle = P.accent;
     g.fillRect(u(4), H * 0.485, u(24.8) - u(4), H * 0.03);
+    g.fillRect(u(21.5), 0, W - u(21.5), H);
     // cockpit opening (dark)
     g.fillStyle = '#0b0b0d';
     g.beginPath(); g.ellipse(u(-2.4), H * 0.5, u(2.2) - u(-2.4) + 40, H * 0.11, 0, 0, Math.PI * 2); g.fill();
@@ -433,12 +440,16 @@ function liveryTextures(colorHex, number, name) {
     const u = x => uOf(x, -15, 3.6) * W;
     g.fillStyle = P.main; g.fillRect(0, 0, W, H);
     carbonBottom(g, W, H);
+    // lower half of the sidepods in the team's second color, with an accent line between
     g.fillStyle = P.deep;
-    g.fillRect(0, H * 0.14, W, H * 0.05); g.fillRect(0, H * 0.81, W, H * 0.05);
+    g.fillRect(0, H * 0.14, W, H * 0.13); g.fillRect(0, H * 0.73, W, H * 0.13);
+    g.fillStyle = P.accent;
+    g.fillRect(0, H * 0.27, W, H * 0.015); g.fillRect(0, H * 0.715, W, H * 0.015);
     g.fillStyle = '#0b0b0d';                       // air intakes at the front
     g.fillRect(u(2.9), 0, W - u(2.9), H);
-    bodyText(g, W, H, 'NEXA FUEL', uOf(-5.5, -15, 3.6), 0.24, 30, P.text, 'right', 280);
-    bodyText(g, W, H, 'NEXA FUEL', uOf(-5.5, -15, 3.6), 0.76, 30, P.text, 'left', 280);
+    // the team name along both sides
+    bodyText(g, W, H, P.name, uOf(-5.5, -15, 3.6), 0.21, 30, P.text, 'right', 300);
+    bodyText(g, W, H, P.name, uOf(-5.5, -15, 3.6), 0.79, 30, P.text, 'left', 300);
   });
 
   // Engine cover: x from -24 to -5.9
@@ -446,6 +457,8 @@ function liveryTextures(colorHex, number, name) {
     const u = x => uOf(x, -24, -5.9) * W;
     g.fillStyle = P.main; g.fillRect(0, 0, W, H);
     carbonBottom(g, W, H);
+    g.fillStyle = P.deep;
+    g.fillRect(0, H * 0.38, u(-7), H * 0.24);      // the team's second color over the top
     g.fillStyle = P.accent;
     g.fillRect(0, H * 0.48, u(-9), H * 0.04);      // stripe along the top
     g.fillStyle = '#0b0b0d';                       // airbox intake above the driver
@@ -481,8 +494,8 @@ function liveryTextures(colorHex, number, name) {
     c.width = 256; c.height = 128;
     const g = c.getContext('2d');
     g.fillStyle = P.main; g.fillRect(0, 0, 256, 128);
-    g.fillStyle = P.accent === '#ffffff' ? '#ffffff' : '#ffcc00';
-    g.fillRect(0, 0, 256, 18);                      // crown
+    g.fillStyle = P.accent;
+    g.fillRect(0, 0, 256, 18);                      // crown in the team's accent color
     g.fillRect(124, 0, 8, 70); g.fillRect(0, 0, 4, 70); g.fillRect(252, 0, 4, 70);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -552,8 +565,8 @@ export function buildCar({ colorHex, number, name, quality = 'medium' }) {
       : new THREE.MeshStandardMaterial(opts);
   };
   const plainPaint = std
-    ? new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.32, metalness: 0.15 })
-    : new THREE.MeshLambertMaterial({ color: colorHex });
+    ? new THREE.MeshStandardMaterial({ color: palette(colorHex).wing, roughness: 0.32, metalness: 0.15 })   // wings & fin
+    : new THREE.MeshLambertMaterial({ color: palette(colorHex).wing });
 
   const group = new THREE.Group();
   const add = (geo, mat, parent = group) => {

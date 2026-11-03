@@ -16,18 +16,20 @@
   const MIN_LAPS = 3, MAX_LAPS = 7;
   const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
 
-  // The 10 car colors
+  // The 10 teams. Players pick a team; the car's whole paint scheme (livery) comes with it.
+  // (Kept under the old name COLORS so the rest of the game keeps working.)
+  //   hex = main body color, second = big second color, accent = stripes, text = writing, wing = wings
   const COLORS = [
-    { id: 'red', label: 'Red', hex: '#e53935' },
-    { id: 'blue', label: 'Blue', hex: '#1e88e5' },
-    { id: 'green', label: 'Green', hex: '#43a047' },
-    { id: 'yellow', label: 'Yellow', hex: '#fdd835' },
-    { id: 'orange', label: 'Orange', hex: '#fb8c00' },
-    { id: 'purple', label: 'Purple', hex: '#8e24aa' },
-    { id: 'pink', label: 'Pink', hex: '#f06292' },
-    { id: 'white', label: 'White', hex: '#f5f5f5' },
-    { id: 'black', label: 'Black', hex: '#212121' },
-    { id: 'cyan', label: 'Cyan', hex: '#00e5ff' }
+    { id: 'redbull',  label: 'Red Bull Racing', short: 'RBR', hex: '#1b2a4e', second: '#d71920', accent: '#ffc906', text: '#ffffff', wing: '#1b2a4e' },
+    { id: 'ferrari',  label: 'Ferrari',         short: 'FER', hex: '#dc0000', second: '#111111', accent: '#ffffff', text: '#ffffff', wing: '#dc0000' },
+    { id: 'mercedes', label: 'Mercedes',        short: 'MER', hex: '#0d0d0d', second: '#c6ccd2', accent: '#00d2be', text: '#ffffff', wing: '#0d0d0d' },
+    { id: 'mclaren',  label: 'McLaren',         short: 'MCL', hex: '#ff8000', second: '#141414', accent: '#47c7fc', text: '#141414', wing: '#141414' },
+    { id: 'aston',    label: 'Aston Martin',    short: 'AMR', hex: '#00594f', second: '#00352f', accent: '#cedc00', text: '#ffffff', wing: '#00594f' },
+    { id: 'alpine',   label: 'Alpine',          short: 'ALP', hex: '#0055a5', second: '#f276b5', accent: '#ffffff', text: '#ffffff', wing: '#0055a5' },
+    { id: 'williams', label: 'Williams',        short: 'WIL', hex: '#041e42', second: '#00a0de', accent: '#ffffff', text: '#ffffff', wing: '#00a0de' },
+    { id: 'rb',       label: 'Racing Bulls',    short: 'RB',  hex: '#eef1f6', second: '#1534cc', accent: '#e10600', text: '#1534cc', wing: '#1534cc' },
+    { id: 'haas',     label: 'Haas',            short: 'HAA', hex: '#f2f2f2', second: '#1b1b1b', accent: '#e10600', text: '#1b1b1b', wing: '#1b1b1b' },
+    { id: 'sauber',   label: 'Kick Sauber',     short: 'SAU', hex: '#151515', second: '#52e252', accent: '#52e252', text: '#52e252', wing: '#151515' }
   ];
 
   // A fresh racer standing on grid slot "slot"

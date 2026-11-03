@@ -282,7 +282,7 @@ io.on('connection', socket => {
     if (!room || room.race) return;
     if (!COLORS.some(c => c.id === color)) return;
     const takenBy = [...room.players.values()].find(p => p.color === color && p.id !== socket.id);
-    if (takenBy) return reply(cb, { ok: false, error: `${takenBy.name} already has that color.` });
+    if (takenBy) return reply(cb, { ok: false, error: `${takenBy.name} already has that team.` });
     room.players.get(socket.id).color = color;
     reply(cb, { ok: true });
     sendLobby(room);
