@@ -369,7 +369,7 @@
       show('race');
       Hud.setLights(0);
       Hud.clearTower();
-      showControls(true);   // remind everyone of the controls while the lights count down
+      hideControls();   // clear view on the grid (the controls guide is on the main menu)
       Hud.message(Tracks.get(data.trackId).name, `${data.laps} laps`, 900);
       Game.start({
         trackId: data.trackId,
@@ -397,7 +397,6 @@
       Game.setLights('go');
       Sound.go();
       Hud.message('GO!', '', 900);
-      setTimeout(hideControls, 600);
       Game.go();
     },
 
