@@ -18,7 +18,8 @@
    ===================================================================== */
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { buildCar } from './car3d.js';
 
 /* ---------------- 1. Quality presets ---------------- */
 const QUALITY = {
@@ -38,8 +39,8 @@ const SKIES = {
 // T-cam: the onboard camera on top of the engine cover, just above and behind
 // the driver's helmet (the 3D car is 48 units long, the helmet sits at x = -3.2)
 const TCAM = {
-  back: 12,       // how far behind the car's centre
-  height: 10,     // how high above the ground
+  back: 10.3,     // how far behind the car's centre (just in front of the shark fin)
+  height: 9.8,    // how high above the ground (just above the airbox)
   lookAhead: 150, // looks at a point this far ahead...
   lookHeight: 0   // ...at this height (slightly downwards)
 };
@@ -51,19 +52,22 @@ let track = null, myId = null;
 let cars = new Map();       // id -> { group, frontWheels, label, helmet }
 let gantryLights = [];
 let shake = 0, steerVis = 0;
-let carGeo = null;          // car shapes, built once and shared by every car
+let qName = 'medium';       // 'low' | 'medium' | 'high'
+let envMap = null;          // soft reflections for shiny paint and metal
+let camOverride = null;     // for automatic testing: look at the car from anywhere
 
 /* ---------------- Start / stop ---------------- */
 
 // Returns true if 3D works on this device, false if not (then the game uses 2D)
 function start(opts) {
   try {
-    q = QUALITY[opts.quality] || QUALITY.medium;
+    qName = QUALITY[opts.quality] ? opts.quality : 'medium';
+    q = QUALITY[qName];
     if (!renderer || currentAntialias !== q.antialias) createRenderer(opts.canvas);
     track = opts.track;
     myId = opts.myId;
     buildScene();
-    opts.players.forEach(p => addCar(p.id, p.colorHex, p.name));
+    opts.players.forEach((p, i) => addCar(p.id, p.colorHex, p.name, (p.slot !== undefined ? p.slot : i) + 1));
     return true;
   } catch (err) {
     console.warn('3D graphics not available, using 2D instead:', err);
@@ -83,6 +87,13 @@ function createRenderer(canvasEl) {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: q.antialias, powerPreference: 'high-performance' });
   currentAntialias = q.antialias;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.NeutralToneMapping; // natural lighting that keeps car colors bright and true
+  renderer.toneMappingExposure = 1.0;
+  // Soft reflections for shiny materials (a simple built-in "studio" light setup;
+  // a real outdoor sky picture replaces this in a later step)
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
 }
 
 function stop() {
@@ -99,6 +110,7 @@ function disposeScene(s) {
     if (obj.geometry && !obj.userData.sharedGeo) obj.geometry.dispose();
     if (obj.material) {
       [].concat(obj.material).forEach(m => {
+        if (m.userData.shared) return;   // used by every car, keep it
         if (m.map) m.map.dispose();
         m.dispose();
       });
@@ -111,6 +123,8 @@ function disposeScene(s) {
 function buildScene() {
   if (scene) disposeScene(scene);
   scene = new THREE.Scene();
+  scene.environment = qName === 'low' ? null : envMap;
+  scene.environmentIntensity = 0.45;
   cars.clear();
   gantryLights = [];
 
@@ -399,67 +413,17 @@ function addSkyAndLights(colors) {
 
 /* ---------------- 4. Cars ---------------- */
 
-// Build the car's shapes once. The car points along +x (front), wheels touch y = 0.
-// Sizes roughly match a real open-wheel car (long and slim, low to the ground).
-const FRONT_WHEEL = { x: 13, z: 8.4, r: 3.6, w: 3.4 };
-function buildCarGeometry() {
-  const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
-  const wheel = (r, w, x, z) => new THREE.CylinderGeometry(r, r, w, 16).rotateX(Math.PI / 2).translate(x, r, z);
-  return {
-    // painted in the player's color
-    body: mergeGeometries([
-      box(24, 3.4, 5.2, -4, 3.6, 0),     // main body (where the driver sits)
-      box(16, 2.2, 3.2, 15, 2.8, 0),     // nose
-      box(14, 3, 11, -6, 3, 0),          // side pods
-      box(14, 3.6, 4, -15, 5.6, 0),      // engine cover
-      box(10, 2.4, 0.5, -17, 8, 0),      // shark fin
-      box(4, 2, 0.5, 23, 1.8, 9.5),      // front wing end plates
-      box(4, 2, 0.5, 23, 1.8, -9.5),
-      box(4, 1, 14, -23, 8.6, 0)         // rear wing
-    ]),
-    // black parts
-    dark: mergeGeometries([
-      box(38, 0.7, 12, -3, 1, 0),        // floor
-      box(4, 0.7, 19, 23, 1, 0),         // front wing
-      box(1.5, 5, 0.5, -22.5, 6, 3.5),   // rear wing supports
-      box(1.5, 5, 0.5, -22.5, 6, -3.5),
-      box(7, 0.4, 4, -3, 5.35, 0),       // cockpit opening
-      wheel(3.9, 4.2, -15, 8.4),         // rear wheels
-      wheel(3.9, 4.2, -15, -8.4)
-    ]),
-    frontWheel: new THREE.CylinderGeometry(FRONT_WHEEL.r, FRONT_WHEEL.r, FRONT_WHEEL.w, 16).rotateX(Math.PI / 2),
-    helmet: new THREE.SphereGeometry(1.7, 16, 12).translate(-3.2, 6.4, 0),
-    visor: box(0.7, 0.7, 2.4, -1.7, 6.7, 0)   // dark visor on the front of the helmet
-  };
-}
-
-const darkMat = new THREE.MeshLambertMaterial({ color: '#16171a' });
-
-function addCar(id, colorHex, name) {
-  if (!carGeo) carGeo = buildCarGeometry();
-  const group = new THREE.Group();
-  const shared = mesh => { mesh.userData.sharedGeo = true; mesh.castShadow = true; return mesh; };
-
-  group.add(shared(new THREE.Mesh(carGeo.body, new THREE.MeshLambertMaterial({ color: colorHex }))));
-  group.add(shared(new THREE.Mesh(carGeo.dark, darkMat)));
-  // Driver's helmet in the player's color (with a dark visor)
-  const helmet = shared(new THREE.Mesh(carGeo.helmet, new THREE.MeshLambertMaterial({ color: colorHex })));
-  group.add(helmet);
-  group.add(shared(new THREE.Mesh(carGeo.visor, darkMat)));
-
-  const frontWheels = [FRONT_WHEEL.z, -FRONT_WHEEL.z].map(z => {
-    const w = shared(new THREE.Mesh(carGeo.frontWheel, darkMat));
-    w.position.set(FRONT_WHEEL.x, FRONT_WHEEL.r, z);
-    group.add(w);
-    return w;
-  });
+// The car model itself is built in car3d.js. Each car gets its own number
+// (its grid position + 1) and the player's name painted on it.
+function addCar(id, colorHex, name, number) {
+  const { group, frontWheels, helmet } = buildCar({ colorHex, number, name, quality: qName });
 
   // Floating name tag
   const label = new THREE.Sprite(new THREE.SpriteMaterial({
     map: textTexture(name, 256, 64, '#ffffff', 'rgba(0,0,0,0.6)', colorHex), depthWrite: false, fog: false
   }));
   label.scale.set(30, 7.5, 1);
-  label.position.set(0, 19, 0);
+  label.position.set(0, 16, 0);
   group.add(label);
 
   if (id === myId) label.visible = false; // no need to see my own name
@@ -519,6 +483,12 @@ function frame(data) {
   camera.lookAt(me.x + fx * TCAM.lookAhead + rand() * 0.4, TCAM.lookHeight + rand() * 0.4, me.y + fz * TCAM.lookAhead);
   // A tiny tilt when cornering (the car leans a little)
   camera.rotateZ(steerVis * speedRatio * 0.035);
+  if (camOverride) {
+    // Test camera, positioned relative to my car (forward, up, right)
+    const o = camOverride, rx = -fz, rz = fx;
+    camera.position.set(me.x + fx * o.f + rx * o.r, o.u, me.y + fz * o.f + rz * o.r);
+    camera.lookAt(me.x + fx * o.lf, o.lu, me.y + fz * o.lf);
+  }
 
   // Fairly wide view, and still wide enough on tall phone screens
   const aspect = w / Math.max(1, h);
@@ -546,4 +516,8 @@ function debugPixel(px, py) {
   return Array.from(out.slice(0, 3));
 }
 
-window.Render3D = { start, stop, frame, setLights, removeCar, getCanvas, debugPixel };
+// For automatic testing only: view my car from a chosen spot
+// f = forward, u = up, r = right (from the car's centre); lf/lu = point to look at
+function debugCamera(o) { camOverride = o; }
+
+window.Render3D = { start, stop, frame, setLights, removeCar, getCanvas, debugPixel, debugCamera };
