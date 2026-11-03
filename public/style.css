@@ -185,7 +185,8 @@ html, body {
 
 /* ---------------- Race screen ---------------- */
 #screen-race { overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
-#game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#game-canvas, #game-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.off { display: none !important; }
 
 .hud {
   position: absolute; top: 12px; left: 12px;

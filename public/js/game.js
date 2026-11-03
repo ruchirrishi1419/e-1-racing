@@ -29,6 +29,7 @@ const Game = (() => {
   let me = { lap: 0, pos: 1, best: null, cur: null, curAt: 0, fin: false };
   let finishRemaining = null, finishAt = 0;
   let viewW = 0, viewH = 0, dpr = 1;
+  let use3D = false;            // true = draw with the 3D T-cam (render3d.js), false = old 2D view
 
   /* ---------------- Starting and stopping ---------------- */
 
@@ -66,6 +67,14 @@ const Game = (() => {
     particles = [];
     locked = true;
 
+    // Try the 3D view first. If this device can't do 3D, use the 2D view.
+    use3D = !!(window.Render3D && Render3D.start({
+      canvas: document.getElementById('game-3d'), track, myId,
+      players: opts.players, quality: opts.quality
+    }));
+    canvas.classList.toggle('off', use3D);
+    document.getElementById('game-3d').classList.toggle('off', !use3D);
+
     resize();
     Hud.setupMinimap(track);
     Hud.finishTimer(null);
@@ -83,7 +92,11 @@ const Game = (() => {
     running = false;
     cancelAnimationFrame(rafId);
     Sound.stopEngine();
+    if (use3D) Render3D.stop();
   }
+
+  // Start lights on the 3D gantry (the on-screen lights are handled by hud.js)
+  function setLights(n) { if (use3D) Render3D.setLights(n); }
 
   /* ---------------- Messages from the server ---------------- */
 
@@ -115,6 +128,7 @@ const Game = (() => {
   function removePlayer(id) {
     players.delete(id);
     order = order.filter(o => o !== id);
+    if (use3D) Render3D.removeCar(id);
   }
 
   // The server says my car jumped too far - put it back
@@ -209,7 +223,20 @@ const Game = (() => {
     const speedRatio = myCar.speed / Physics.TUNING.maxSpeed;
     Sound.updateEngine(speedRatio, input.up, myCar.drifting);
 
-    render(speedRatio);
+    if (use3D) {
+      Render3D.frame({
+        dt,
+        me: {
+          x: myCar.x, y: myCar.y, a: myCar.angle, speedRatio,
+          steer: (input.right ? 1 : 0) - (input.left ? 1 : 0),
+          wallHit: strongestWall, bump: strongestBump,
+          onGrass: myCar.surface === 'grass' && Math.abs(myCar.speed) > 40
+        },
+        cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a }))
+      });
+    } else {
+      render(speedRatio);
+    }
     updateHud(now);
   }
 
@@ -554,5 +581,5 @@ const Game = (() => {
     ctx.closePath();
   }
 
-  return { start, go, stop, onState, removePlayer, correct };
+  return { start, go, stop, onState, removePlayer, correct, setLights };
 })();

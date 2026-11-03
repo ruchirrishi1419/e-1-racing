@@ -140,16 +140,18 @@ const Hud = (() => {
   }
 
   /* ---------- Start lights ---------- */
-  // n = 0: hide, 1-3: that many red lights on, 'go': all green
+  // 5 start lights. The countdown has 3 steps:
+  // n = 0: hide, 1: 2 red lights, 2: 4 red, 3: all 5 red, 'go': all green
   function setLights(n) {
     const box = $('start-lights');
     const lights = box.querySelectorAll('.light');
     if (n === 0) { box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
+    const lit = [0, 2, 4, 5][n] || 0;
     lights.forEach((l, i) => {
       l.classList.remove('red', 'green');
       if (n === 'go') l.classList.add('green');
-      else if (i < n) l.classList.add('red');
+      else if (i < lit) l.classList.add('red');
     });
     if (n === 'go') setTimeout(() => box.classList.add('hidden'), 1200);
   }

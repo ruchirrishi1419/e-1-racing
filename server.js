@@ -27,6 +27,9 @@ const PORT = process.env.PORT || 3000; // Render (and other hosts) tell us which
 // Serve the browser files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
+// The Three.js 3D library (downloaded by "npm install" into node_modules)
+app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules/three/build')));
+app.use('/vendor/three-addons', express.static(path.join(__dirname, 'node_modules/three/examples/jsm')));
 
 /* ---------------- Game settings ---------------- */
 const TICK_MS = 50;  // send race updates 20 times per second

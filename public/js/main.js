@@ -46,6 +46,13 @@
 
   function myId() { return mode === 'offline' ? Offline.PLAYER_ID : socket.id; }
 
+  // Graphics level for the 3D view: 'low', 'medium' or 'high'
+  // (phones start on 'low' so they stay smooth)
+  function graphicsQuality() {
+    try { const saved = localStorage.getItem('e1-graphics'); if (saved) return saved; } catch (e) { /* ignore */ }
+    return Input.isTouch ? 'low' : 'medium';
+  }
+
   /* ---------------- Reusable pickers (tracks, numbers, colors) ---------------- */
 
   function buildTrackCards(box, onPick) {
@@ -300,17 +307,20 @@
         send: mode === 'offline'
           ? state => Offline.onCarState(state)
           : state => socket.volatile.emit('carState', state),
-        serverNow: mode === 'offline' ? () => Date.now() : serverNow
+        serverNow: mode === 'offline' ? () => Date.now() : serverNow,
+        quality: graphicsQuality()
       });
     },
 
     countdown({ lights }) {
       Hud.setLights(lights);
+      Game.setLights(lights);
       Sound.countdown();
     },
 
     go() {
       Hud.setLights('go');
+      Game.setLights('go');
       Sound.go();
       Hud.message('GO!', '', 900);
       Game.go();
