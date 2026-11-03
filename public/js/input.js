@@ -15,7 +15,7 @@
    Arrow Left/Right steer        Left stick or D-pad
    or A / D
    Tab (hold)       rear view    Y / Triangle (hold)
-   C                change view  RB / R1  (Helmet cam -> Cockpit -> T-cam)
+   Space            change view  RB / R1  (T-cam <-> Cockpit)
    ===================================================================== */
 
 const Input = (() => {
@@ -36,11 +36,12 @@ const Input = (() => {
   };
 
   window.addEventListener('keydown', e => {
-    if (e.code === 'KeyC' && enabled && !e.repeat) { camPresses++; e.preventDefault(); return; }
+    if (e.code === 'Space' && enabled) { if (!e.repeat) camPresses++; e.preventDefault(); return; }   // Space = change camera
     const control = KEYS[e.code];
     if (control && enabled) { keys[control] = true; e.preventDefault(); }
   });
   window.addEventListener('keyup', e => {
+    if (e.code === 'Space' && enabled) { e.preventDefault(); return; }
     const control = KEYS[e.code];
     if (control) { keys[control] = false; if (enabled) e.preventDefault(); }
   });

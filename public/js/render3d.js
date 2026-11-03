@@ -38,11 +38,9 @@ const QUALITY = {
 
 // Camera views, in the car's own coordinates (x = forward, y = up, z = right).
 // The helmet is at x = -2.8 (top at about 7.2), the halo just in front of it.
-//   helmet:  just above and behind the driver's helmet, looking through the halo
 //   cockpit: at the driver's eyes - steering wheel, gloves and the halo across the top
 //   tcam:    the onboard camera on top of the car, behind the helmet
 const VIEWS = {
-  helmet:  { name: 'Helmet cam', eye: new THREE.Vector3(-5.0, 7.35, 0), look: new THREE.Vector3(150, 3.2, 0), fov: 80, helmet: true, wheel: false },
   cockpit: { name: 'Cockpit',    eye: new THREE.Vector3(-2.0, 6.15, 0), look: new THREE.Vector3(98, -2.85, 0), fov: 86, helmet: false, wheel: true },
   tcam:    { name: 'T-cam',      eye: new THREE.Vector3(-11.5, 10.2, 0), look: new THREE.Vector3(150, 1, 0), fov: 86, helmet: true, wheel: false }
 };
@@ -363,8 +361,8 @@ function frame(data) {
   const amp = speedRatio * speedRatio * 0.35 + shake * 2 + rumble * Math.min(1, speedRatio * 3);
   const jitter = () => (Math.random() - 0.5) * 2 * amp;
 
-  // Onboard camera (Helmet cam / Cockpit / T-cam). It leans with the car on hills and banking.
-  const view = VIEWS[data.view] || VIEWS.helmet;
+  // Onboard camera (T-cam / Cockpit). It leans with the car on hills and banking.
+  const view = VIEWS[data.view] || VIEWS.tcam;
   const back = !!data.lookBack;
   if (myParts) { myParts.helmet.visible = myParts.visor.visible = back || view.helmet; }
   if (cockpit) cockpit.pivot.visible = !back && view.wheel;

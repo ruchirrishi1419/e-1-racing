@@ -444,7 +444,7 @@
   socket.on('correction', pos => { if (mode === 'online') Game.correct(pos); });
   socket.on('notice', n => { if (mode === 'online' && currentCode) Hud.toast(n.text); });
 
-  // Camera button (Helmet cam -> Cockpit -> T-cam)
+  // Camera button (T-cam <-> Cockpit)
   $('btn-camera').addEventListener('click', e => { Input.pressCamera(); e.target.blur(); });
 
   $('btn-mute').addEventListener('click', () => {

@@ -36,8 +36,8 @@ const Game = (() => {
   let lastOvertake = new Map(); // "A>B" -> time, so the same overtake isn't announced twice
   let prevOrder = [];
   let goTime = 0;
-  // Camera view: 'helmet' (default), 'cockpit' or 'tcam' - remembered on this device
-  let view = (() => { try { return localStorage.getItem('e1-view') || 'helmet'; } catch (e) { return 'helmet'; } })();
+  // Camera view: 'tcam' (default) or 'cockpit' - remembered on this device
+  let view = (() => { try { const v = localStorage.getItem('e1-view'); return v === 'cockpit' ? 'cockpit' : 'tcam'; } catch (e) { return 'tcam'; } })();
   function nextView() {
     if (!window.Render3D) return;
     const list = Render3D.viewNames();
@@ -51,7 +51,7 @@ const Game = (() => {
   // Show the current view's name on the camera button (HELMET / COCKPIT / T-CAM)
   function showViewName() {
     if (!window.Render3D) return;
-    const v = Render3D.viewNames().find(x => x.id === view) || { name: 'Helmet cam' };
+    const v = Render3D.viewNames().find(x => x.id === view) || { name: 'T-cam' };
     document.getElementById('view-name').textContent = v.name.replace(' cam', '').toUpperCase();
   }
 

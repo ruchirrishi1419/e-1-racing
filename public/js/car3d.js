@@ -143,7 +143,7 @@ export const WHEELS = {
   front: { x: 14, z: 6.9, r: 3.1, w: 3.0 },
   rear: { x: -17, z: 6.7, r: 3.2, w: 3.6 }
 };
-export const HELMET = { x: -2.8, y: 5.65, r: 1.25 };
+export const HELMET = { x: -2.8, y: 5.9, r: 1.25 };
 
 let GEO = null;
 function buildGeometry() {
@@ -230,15 +230,15 @@ function buildGeometry() {
   // Halo: the curved safety bar around the driver's head, with a centre pillar
   const haloCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(-5.6, 5.0, 2.6),
-    new THREE.Vector3(-3.6, 7.0, 2.5),
-    new THREE.Vector3(-0.8, 7.85, 1.6),
-    new THREE.Vector3(0.6, 7.95, 0),
-    new THREE.Vector3(-0.8, 7.85, -1.6),
-    new THREE.Vector3(-3.6, 7.0, -2.5),
+    new THREE.Vector3(-3.6, 6.6, 2.5),
+    new THREE.Vector3(-0.8, 7.35, 1.6),
+    new THREE.Vector3(0.6, 7.45, 0),
+    new THREE.Vector3(-0.8, 7.35, -1.6),
+    new THREE.Vector3(-3.6, 6.6, -2.5),
     new THREE.Vector3(-5.6, 5.0, -2.6)
   ]);
   const pillarCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0.6, 7.95, 0), new THREE.Vector3(2.3, 6.9, 0), new THREE.Vector3(3.6, 4.9, 0)
+    new THREE.Vector3(0.6, 7.45, 0), new THREE.Vector3(2.2, 6.6, 0), new THREE.Vector3(3.6, 4.9, 0)
   ]);
   const halo = merge([
     new THREE.TubeGeometry(haloCurve, 40, 0.26, 10, false),
