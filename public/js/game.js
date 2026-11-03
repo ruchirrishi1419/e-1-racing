@@ -36,6 +36,24 @@ const Game = (() => {
   let lastOvertake = new Map(); // "A>B" -> time, so the same overtake isn't announced twice
   let prevOrder = [];
   let goTime = 0;
+  // Camera view: 'helmet' (default), 'cockpit' or 'tcam' - remembered on this device
+  let view = (() => { try { return localStorage.getItem('e1-view') || 'helmet'; } catch (e) { return 'helmet'; } })();
+  function nextView() {
+    if (!window.Render3D) return;
+    const list = Render3D.viewNames();
+    const k = list.findIndex(v => v.id === view);
+    const next = list[(k + 1) % list.length];
+    view = next.id;
+    try { localStorage.setItem('e1-view', view); } catch (e) { /* ignore */ }
+    Hud.toast('Camera: ' + next.name);
+    showViewName();
+  }
+  // Show the current view's name on the camera button (HELMET / COCKPIT / T-CAM)
+  function showViewName() {
+    if (!window.Render3D) return;
+    const v = Render3D.viewNames().find(x => x.id === view) || { name: 'Helmet cam' };
+    document.getElementById('view-name').textContent = v.name.replace(' cam', '').toUpperCase();
+  }
 
   /* ---------------- Gearbox (8 gears) ----------------
      Works out the gear and engine speed (RPM) from the car's speed.
@@ -110,6 +128,7 @@ const Game = (() => {
 
     resize();
     Hud.setupMinimap(track);
+    showViewName();
     Hud.finishTimer(null);
     running = true;
     lastFrame = performance.now();
@@ -285,6 +304,7 @@ const Game = (() => {
     // Move my car in fixed small steps (keeps physics the same on every computer)
     // keyboard + game controller + touch buttons (read fresh every frame)
     const controls = Input.poll();
+    if (controls.camSwitch) nextView();
     const input = locked ? { up: false, down: false, left: false, right: false } : controls;
     accumulator += dt;
     let strongestBump = 0, strongestWall = 0;
@@ -365,6 +385,7 @@ const Game = (() => {
         cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a })),
         leaderId: order[0],
         lookBack: controls.lookBack,
+        view,
         racingLine: showRacingLine
       });
     } else {

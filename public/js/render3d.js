@@ -24,7 +24,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { buildCar } from './car3d.js';
+import { buildCar, buildCockpit } from './car3d.js';
 import { buildTrack } from './track3d.js';
 import { buildScenery } from './scenery3d.js';
 import { setupEnvironment } from './env3d.js';
@@ -36,11 +36,17 @@ const QUALITY = {
   high:   { pixelRatio: 1.5,  antialias: false, fogFar: 4800, post: true,  samples: 4, mirror: 384, mirrorEvery: 1, tv: 384, tvEvery: 4 }
 };
 
-// The driver's eyes, in the car's own coordinates (x = forward, y = up, z = right)
-// T-cam: the onboard camera on top of the car, just above and behind the driver's helmet
-// (the helmet is at x = -2.8, the airbox behind it is about 8 high)
-const EYE = new THREE.Vector3(-11.5, 10.2, 0);
-const LOOK = new THREE.Vector3(150, 1, 0);   // the point it looks at, far ahead on the track
+// Camera views, in the car's own coordinates (x = forward, y = up, z = right).
+// The helmet is at x = -2.8 (top at about 7.2), the halo just in front of it.
+//   helmet:  just above and behind the driver's helmet, looking through the halo
+//   cockpit: at the driver's eyes - steering wheel, gloves and the halo across the top
+//   tcam:    the onboard camera on top of the car, behind the helmet
+const VIEWS = {
+  helmet:  { name: 'Helmet cam', eye: new THREE.Vector3(-5.0, 7.35, 0), look: new THREE.Vector3(150, 3.2, 0), fov: 80, helmet: true, wheel: false },
+  cockpit: { name: 'Cockpit',    eye: new THREE.Vector3(-2.0, 6.15, 0), look: new THREE.Vector3(98, -2.85, 0), fov: 86, helmet: false, wheel: true },
+  tcam:    { name: 'T-cam',      eye: new THREE.Vector3(-11.5, 10.2, 0), look: new THREE.Vector3(150, 1, 0), fov: 86, helmet: true, wheel: false }
+};
+const WHEEL_POS = new THREE.Vector3(1.05, 4.9, 0);   // steering wheel, in front of the driver
 // Rear view (hold Tab / Y): camera above the front of the cockpit, looking backwards
 const REAR_EYE = new THREE.Vector3(3, 11.5, 0);
 const REAR_LOOK = new THREE.Vector3(-160, 3, 0);
@@ -54,6 +60,7 @@ let cockpit = null;         // my steering wheel and gloves
 let mirror = null, tv = null;
 let shake = 0, steerVis = 0, frameNo = 0;
 let camOverride = null;
+let myParts = null;          // my helmet and visor (hidden in the Cockpit view)
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 
 /* ---------------- Start / stop ---------------- */
@@ -100,6 +107,7 @@ function stop() {
   scene = null;
   cars.clear();
   cockpit = null;
+  myParts = null;
 }
 
 function getCanvas() { return canvas; }
@@ -130,6 +138,7 @@ function buildScene(timeOfDay) {
   scene.environmentIntensity = 0.5;
   cars.clear();
   cockpit = null;
+  myParts = null;
 
   camera = new THREE.PerspectiveCamera(70, 1, 0.12, q.fogFar * 1.7 + 800);
   camera.layers.enable(1);          // layer 1 = crowd and trees (skipped by mirrors and TV cameras)
@@ -228,7 +237,14 @@ function addCar(id, colorHex, name, number) {
 
   if (id === myId) {
     label.visible = false;          // no need to see my own name
-    // (T-cam view: the helmet stays visible in front of the camera)
+    myParts = { helmet: built.helmet, visor: built.visor };
+    // steering wheel, gloves and arms (only shown in the Cockpit view)
+    cockpit = buildCockpit({ colorHex, quality: qName });
+    const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0), new THREE.Vector3(-1, 0, 0));
+    cockpit.pivot.quaternion.setFromRotationMatrix(basis);
+    cockpit.pivot.rotateX(-0.42);     // lean the top of the wheel away from the driver
+    cockpit.pivot.position.copy(WHEEL_POS);
+    group.add(cockpit.pivot);
     // mirror glass that shows the picture from the rear camera
     [1, -1].forEach(side => {
       const glass = new THREE.CircleGeometry(1, 20).scale(0.31, 0.36, 1).rotateY(-Math.PI / 2);
@@ -347,12 +363,15 @@ function frame(data) {
   const amp = speedRatio * speedRatio * 0.35 + shake * 2 + rumble * Math.min(1, speedRatio * 3);
   const jitter = () => (Math.random() - 0.5) * 2 * amp;
 
-  // T-cam: on top of the car behind the helmet, looking forward (it leans with hills and banking)
+  // Onboard camera (Helmet cam / Cockpit / T-cam). It leans with the car on hills and banking.
+  const view = VIEWS[data.view] || VIEWS.helmet;
+  const back = !!data.lookBack;
+  if (myParts) { myParts.helmet.visible = myParts.visor.visible = back || view.helmet; }
+  if (cockpit) cockpit.pivot.visible = !back && view.wheel;
   if (mine) {
     mine.group.updateMatrixWorld();
-    const back = !!data.lookBack;
-    camera.position.copy(back ? REAR_EYE : EYE).applyMatrix4(mine.group.matrixWorld);
-    tmpV.copy(back ? REAR_LOOK : LOOK).applyMatrix4(mine.group.matrixWorld);
+    camera.position.copy(back ? REAR_EYE : view.eye).applyMatrix4(mine.group.matrixWorld);
+    tmpV.copy(back ? REAR_LOOK : view.look).applyMatrix4(mine.group.matrixWorld);
     camera.up.set(0, 1, 0).applyQuaternion(mine.group.quaternion);
     camera.lookAt(tmpV);
     camera.rotateX(jitter() * 0.0035);
@@ -369,7 +388,7 @@ function frame(data) {
 
   // Field of view: fairly wide, and still wide enough on tall phone screens
   const aspect = w / Math.max(1, h);
-  const vFov = 2 * Math.atan(Math.tan((86 * Math.PI / 180) / 2) / aspect) * 180 / Math.PI;
+  const vFov = 2 * Math.atan(Math.tan((view.fov * Math.PI / 180) / 2) / aspect) * 180 / Math.PI;
   camera.fov = Math.max(50, Math.min(95, vFov)) + speedRatio * 3;
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
@@ -456,4 +475,6 @@ function debugState() {
   return { cam: camera.position.toArray().map(v => Math.round(v)), ground: Math.round(world.heightAt(camera.position.x, camera.position.z)),
            fog: scene.fog && scene.fog.color.getHexString(), bg: scene.background && (scene.background.isTexture ? 'texture' : scene.background.getHexString()), maps: roadMats.slice(0, 8) };
 }
-window.Render3D = { start, stop, frame, setLights, removeCar, getCanvas, crowdLevel, cheer, debugPixel, debugCamera, debugInfo, debugState };
+const viewNames = () => Object.keys(VIEWS).map(k => ({ id: k, name: VIEWS[k].name }));
+
+window.Render3D = { viewNames, start, stop, frame, setLights, removeCar, getCanvas, crowdLevel, cheer, debugPixel, debugCamera, debugInfo, debugState };

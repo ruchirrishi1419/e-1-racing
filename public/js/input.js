@@ -15,10 +15,12 @@
    Arrow Left/Right steer        Left stick or D-pad
    or A / D
    Tab (hold)       rear view    Y / Triangle (hold)
+   C                change view  RB / R1  (Helmet cam -> Cockpit -> T-cam)
    ===================================================================== */
 
 const Input = (() => {
-  const state = { up: false, down: false, left: false, right: false, steer: 0, throttle: 0, brake: 0, lookBack: false };
+  const state = { up: false, down: false, left: false, right: false, steer: 0, throttle: 0, brake: 0, lookBack: false, camSwitch: false };
+  let camPresses = 0, padCamWasDown = false;
   const keys = { up: false, down: false, left: false, right: false, lookBack: false };   // keyboard
   const touch = { up: false, down: false, left: false, right: false, lookBack: false };  // touch buttons
   let enabled = false; // only listen while racing (so typing your name still works)
@@ -34,6 +36,7 @@ const Input = (() => {
   };
 
   window.addEventListener('keydown', e => {
+    if (e.code === 'KeyC' && enabled && !e.repeat) { camPresses++; e.preventDefault(); return; }
     const control = KEYS[e.code];
     if (control && enabled) { keys[control] = true; e.preventDefault(); }
   });
@@ -68,7 +71,8 @@ const Input = (() => {
         steer: dpad || stick,
         throttle: Math.max(btn(7), btn(0)),    // right trigger, or A / Cross
         brake: Math.max(btn(6), btn(1)),       // left trigger, or B / Circle
-        lookBack: btn(3) > 0.5                 // Y / Triangle
+        lookBack: btn(3) > 0.5,                // Y / Triangle
+        camera: btn(5) > 0.5                   // RB / R1
       };
     }
     return null;
@@ -82,6 +86,12 @@ const Input = (() => {
     state.throttle = Math.max(keys.up || touch.up ? 1 : 0, pad ? pad.throttle : 0);
     state.brake = Math.max(keys.down || touch.down ? 1 : 0, pad ? pad.brake : 0);
     state.lookBack = keys.lookBack || touch.lookBack || !!(pad && pad.lookBack);
+    // change camera view: once per press (keyboard C, controller RB, or the screen button)
+    const padCam = !!(pad && pad.camera);
+    if (padCam && !padCamWasDown) camPresses++;
+    padCamWasDown = padCam;
+    state.camSwitch = camPresses > 0;
+    camPresses = 0;
     state.up = state.throttle > 0.1;
     state.down = state.brake > 0.1;
     state.left = state.steer < -0.3;
@@ -123,5 +133,7 @@ const Input = (() => {
 
   const hasController = () => !!padName || !!readPad();
 
-  return { state, isTouch, setupTouch, setEnabled, poll, hasController };
+  const pressCamera = () => { camPresses++; };
+
+  return { state, isTouch, setupTouch, setEnabled, poll, hasController, pressCamera };
 })();

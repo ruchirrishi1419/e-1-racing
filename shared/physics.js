@@ -17,7 +17,9 @@
   // Change these numbers to change how the cars feel!
   const TUNING = {
     accel: 430,          // how fast the car speeds up (pixels per second, per second)
-    brake: 950,          // how strong the brakes are
+    brakeLow: 190,       // braking power at low speed
+    brakeHigh: 430,      // braking power at top speed (F1 downforce pushes the car down = more grip)
+    brakeBuild: 4,       // how fast brake pressure builds up (4 = full pressure in 0.25 s)
     reverseAccel: 280,   // how fast you speed up going backwards
     maxSpeed: 560,       // top speed on the road (pixels per second)
     maxReverse: 170,     // top speed going backwards
@@ -56,10 +58,18 @@
     // (a game controller can press the pedals halfway: throttle / brake from 0 to 1)
     const gas = input.throttle !== undefined ? input.throttle : (input.up ? 1 : 0);
     const brk = input.brake !== undefined ? input.brake : (input.down ? 1 : 0);
+    // Brake pressure builds up smoothly (like pressing a real brake pedal), and lets go quickly
+    car.brakeP = car.brakeP || 0;
+    car.brakeP += Math.max(-8 * dt, Math.min(TUNING.brakeBuild * dt, brk - car.brakeP));
+    // F1 brakes: strongest at high speed (more downforce), gentler as the car slows down.
+    // From top speed to a stop takes about 2 seconds.
+    const sp = Math.min(1, Math.abs(forward) / TUNING.maxSpeed);
+    const brakePower = TUNING.brakeLow + (TUNING.brakeHigh - TUNING.brakeLow) * sp * sp;
     if (gas > 0.02) {
-      forward += (forward < 0 ? TUNING.brake : TUNING.accel) * gas * dt;
-    } else if (brk > 0.02) {
-      forward -= (forward > 15 ? TUNING.brake : TUNING.reverseAccel) * brk * dt;
+      forward += (forward < 0 ? brakePower : TUNING.accel) * gas * dt;
+    } else if (brk > 0.02 || car.brakeP > 0.02) {
+      if (forward > 15) forward = Math.max(0, forward - brakePower * car.brakeP * dt);
+      else forward -= TUNING.reverseAccel * brk * dt;    // stopped: holding brake = reverse
     } else {
       // No pedal pressed: slowly roll to a stop
       const r = TUNING.rolling * dt;

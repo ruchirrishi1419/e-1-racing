@@ -18,7 +18,7 @@
   'use strict';
 
   const STEP = 4;           // use every 4th centre-line point (about 40 units apart)
-  const BRAKE = 800;        // how hard a car can brake (units per second, per second)
+  const BRAKE = 300;        // how hard a car brakes on average (units per second, per second)
   const ACCEL = 360;        // how fast a car speeds up
 
   // Build (once) and return the racing line for a track
@@ -91,7 +91,7 @@
       const i = (startIndex + k) % line.n, j = (i + 1) % line.n;
       // what the ideal lap does here: slowing down hard = red, a little = yellow
       const decel = (line.speed[i] * line.speed[i] - line.speed[j] * line.speed[j]) / (2 * Math.max(1, line.ds[i]));
-      let c = decel > 450 ? 2 : decel > 60 ? 1 : 0;
+      let c = decel > 170 ? 2 : decel > 25 ? 1 : 0;
       // and if I'm going faster than this point allows, how hard must I brake from here?
       dist += line.ds[i];
       const vt = line.speed[j];
