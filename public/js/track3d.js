@@ -239,7 +239,7 @@ export function buildHeights(track, an) {
     if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) return 1e9;
     return best[gy * cols + gx];
   }
-  return { heightAt, distAt, bounds: { x0, y0, x1: x0 + (cols - 1) * CELL, y1: y0 + (rows - 1) * CELL } };
+  return { heightAt, distAt, grid: { CELL, x0, y0, cols, rows, H, best }, bounds: { x0, y0, x1: x0 + (cols - 1) * CELL, y1: y0 + (rows - 1) * CELL } };
 }
 
 /* ---------------- Ribbon: a strip of road-like surface along the track ---------------- */
@@ -312,8 +312,11 @@ export function buildTrack(ctx) {
   const rockColor = new THREE.Color('#8a8176'), base = new THREE.Color('#ffffff');
   for (let i = 0; i < tp.count; i++) {
     const x = tp.getX(i), y = tp.getZ(i);
-    let h = heightAt(x, y);
-    if (hm.distAt(x, y) < hw + 20) h -= 1.2;          // keep the grass under the road
+    // This big ground is made of large triangles, so near the track it is pushed down a
+    // little and a detailed ground strip (below) takes over. That stops hills poking
+    // up through the road.
+    const d = hm.distAt(x, y);
+    const h = heightAt(x, y) - 6 * (1 - smooth(wall + 380, wall + 560, d));
     tp.setY(i, h);
     // Mountain Pass: rocky colour on the high slopes
     const c = base.clone();
@@ -326,11 +329,48 @@ export function buildTrack(ctx) {
   for (let i = 0; i < tuv.count; i++) tuv.setXY(i, tp.getX(i) / 160, tp.getZ(i) / 160);
   terrain.computeVertexNormals();
   const groundMat = M({ map: tex(groundTex + '_diff'), normalMap: std ? tex(groundTex + '_nor', 1, false) : null, vertexColors: true, roughness: 0.95, metalness: 0 });
-  if (track.theme.ground === 'concrete') groundMat.color = new THREE.Color('#b8bcc4');
+  if (track.theme.ground === 'concrete') { groundMat.map = grayTex('concrete_floor_diff', 140, 0.9); groundMat.map.repeat.set(1, 1); }   // gray city pavement
   if (groundTex === 'sparse_grass') groundMat.color = new THREE.Color('#9fd27c');   // a fresher green
   const ground = new THREE.Mesh(terrain, groundMat);
   ground.receiveShadow = true;
   group.add(ground);
+
+  // Detailed ground strip along the track: uses exactly the same height points as the road
+  {
+    const G = hm.grid, nodeIndex = new Int32Array(G.cols * G.rows).fill(-1);
+    const pos = [], col = [], uvs = [], idx = [];
+    const near = c => G.best[c] < wall + 600;
+    const node = (gx, gy) => {
+      const c = gy * G.cols + gx;
+      if (nodeIndex[c] < 0) {
+        nodeIndex[c] = pos.length / 3;
+        const x = G.x0 + gx * G.CELL, y = G.y0 + gy * G.CELL;
+        let h = G.H[c];
+        if (G.best[c] < hw + 25) h -= 1.2;           // keep the grass just under the road
+        pos.push(x, h, y);
+        uvs.push(x / 160, y / 160);
+        const cc = base.clone();
+        if (track.theme.ground === 'rock') cc.lerp(rockColor, smooth(80, 320, h));
+        col.push(cc.r, cc.g, cc.b);
+      }
+      return nodeIndex[c];
+    };
+    for (let gy = 0; gy < G.rows - 1; gy++) for (let gx = 0; gx < G.cols - 1; gx++) {
+      const c = gy * G.cols + gx;
+      if (!(near(c) || near(c + 1) || near(c + G.cols) || near(c + G.cols + 1))) continue;
+      const a = node(gx, gy), b = node(gx + 1, gy), d = node(gx, gy + 1), e = node(gx + 1, gy + 1);
+      idx.push(a, d, b, b, d, e);   // two triangles per square, facing up
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const strip = new THREE.Mesh(g, groundMat);
+    strip.receiveShadow = true;
+    group.add(strip);
+  }
 
   /* --- Road --- */
   const all = [[0, n - 1], [n - 1, 0]];
@@ -367,7 +407,8 @@ export function buildTrack(ctx) {
       const c = an.info[i];
       return c.corner && (c.turn > 0 ? -1 : 1) === side;
     });
-    const a1 = side * (hw + 12), a2 = side * (hw + 52), a3 = side * (wall - 4);
+    // (never wider than the space up to the barrier - Monaco is very narrow)
+    const a1 = side * (hw + 12), a2 = side * Math.min(hw + 52, wall - 6), a3 = side * (wall - 4);
     const stripe = new THREE.Mesh(ribbon(track, an, heightAt, outsideRanges, Math.min(a1, a2), Math.max(a1, a2), 0.55, 60), stripeMat);
     stripe.receiveShadow = true; group.add(stripe);
     if (Math.abs(a3) > Math.abs(a2) + 10 && track.theme.ground !== 'concrete') {
@@ -378,7 +419,7 @@ export function buildTrack(ctx) {
 
   // City Circuit: concrete pavement everywhere beside the road
   if (track.theme.ground === 'concrete') {
-    const pave = M({ map: tex('concrete_floor_diff'), normalMap: std ? tex('concrete_floor_nor', 1, false) : null, roughness: 0.9, color: '#9fa3aa' });
+    const pave = M({ map: grayTex('concrete_floor_diff', 150, 0.9), normalMap: std ? tex('concrete_floor_nor', 1, false) : null, roughness: 0.9, color: '#ffffff' });
     [[-wall, -hw - 12], [hw + 12, wall]].forEach(([a, b]) => {
       const m = new THREE.Mesh(ribbon(track, an, heightAt, all, a, b, 0.3, 'tile'), pave);
       m.receiveShadow = true; group.add(m);

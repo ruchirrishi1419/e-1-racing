@@ -352,7 +352,7 @@ const Game = (() => {
         dt, time: raceTime,
         me: {
           x: myCar.x, y: myCar.y, a: myCar.angle, speed: myCar.speed, speedRatio,
-          steer: (input.right ? 1 : 0) - (input.left ? 1 : 0),
+          steer: myCar.steer || 0,
           wallHit: strongestWall, bump: strongestBump,
           onGrass: myCar.surface === 'grass' && Math.abs(myCar.speed) > 40,
           trackIndex: Math.max(0, myCar.hint), trackDist: myCar.trackDist || 0,

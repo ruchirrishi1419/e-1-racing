@@ -55,9 +55,9 @@
       const A = Math.hypot(bx - ax, by - ay), B = Math.hypot(qx - bx, qy - by), C = Math.hypot(qx - ax, qy - ay);
       const area2 = Math.abs((bx - ax) * (qy - ay) - (by - ay) * (qx - ax));
       const curv = (2 * area2) / Math.max(1e-6, A * B * C);
-      // the car turns at about turnRate*(1 - 0.3*v/vmax) radians per second, so the
-      // fastest speed that can follow this bend is:
-      speed[i] = Math.min(T.maxSpeed, 0.82 * T.turnRate / (curv + 0.3 * T.turnRate / T.maxSpeed));
+      // the car can turn at most min(turnRate, lateralGrip / speed) radians per second,
+      // so the fastest speed that can follow this bend is:
+      speed[i] = Math.min(T.maxSpeed, Math.sqrt(0.8 * T.lateralGrip / Math.max(curv, 1e-6)), 0.8 * T.turnRate / Math.max(curv, 1e-6));
       ds[i] = Math.hypot(x[(i + 1) % n] - x[i], y[(i + 1) % n] - y[i]);
     }
     // braking zones (work backwards) and acceleration (work forwards), twice round

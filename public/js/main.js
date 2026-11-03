@@ -31,6 +31,7 @@
     $('input-name').value = localStorage.getItem('e1-name') || '';
     Object.assign(offline, JSON.parse(localStorage.getItem('e1-offline') || '{}'));
   } catch (e) { /* not allowed - that's fine */ }
+  if (!Tracks.list[offline.trackId]) offline.trackId = 0;   // e.g. a track that no longer exists
   function saveOffline() { try { localStorage.setItem('e1-offline', JSON.stringify(offline)); } catch (e) { /* ignore */ } }
 
   function show(name) {

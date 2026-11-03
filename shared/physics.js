@@ -24,7 +24,10 @@
     grassMaxSpeed: 210,  // top speed on grass/sand
     airDrag: 0.25,       // slows the car a little at high speed
     rolling: 150,        // slows the car when you don't press anything
-    turnRate: 3.1,       // how quickly the car turns (radians per second)
+    turnRate: 2.0,       // fastest the car can turn at low speed (radians per second)
+    lateralGrip: 430,    // how much sideways force the tyres can hold (higher speed = gentler turning)
+    steerSpeed: 4.0,     // how fast the steering wheel turns to full lock (per second)
+    steerReturn: 6.0,    // how fast it straightens out when you let go
     grip: 10,            // normal tyre grip (higher = less sliding)
     driftGrip: 3.2,      // grip while turning hard at speed (gives a small drift)
     grassGrip: 4.5,      // grip on grass
@@ -67,15 +70,23 @@
     forward = Math.max(-TUNING.maxReverse, Math.min(TUNING.maxSpeed, forward));
 
     // --- Steering ---
-    const steer = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    const speedFactor = Math.max(-1, Math.min(1, forward / 140)); // can't turn while stopped
-    const highSpeedDamp = 1 - 0.3 * Math.min(1, Math.abs(forward) / TUNING.maxSpeed);
-    const turning = steer * TUNING.turnRate * speedFactor * highSpeedDamp;
+    // The steering wheel moves smoothly towards full lock (keys are just on/off)
+    const target = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const rate = (target === 0 ? TUNING.steerReturn : TUNING.steerSpeed) * dt;
+    car.steer = car.steer || 0;
+    car.steer += Math.max(-rate, Math.min(rate, target - car.steer));
+    const steer = car.steer;
+    // Like a real race car, the tyres can only hold so much sideways force:
+    // the faster you go, the less sharply the car can turn.
+    const v = Math.abs(forward);
+    const maxTurn = Math.min(TUNING.turnRate, TUNING.lateralGrip / Math.max(v, 1));
+    const lowSpeed = Math.min(1, v / 120);           // can't turn while stopped
+    const turning = steer * maxTurn * lowSpeed * Math.sign(forward);
 
     // --- Grip / drifting ---
     let grip = TUNING.grip;
     if (onGrass) grip = TUNING.grassGrip;
-    else if (steer !== 0 && forward > 330) grip = TUNING.driftGrip;
+    else if (Math.abs(steer) > 0.6 && forward > 380) grip = TUNING.driftGrip;
     side *= Math.exp(-grip * dt);
 
     // Put the two parts back together, then turn the car.

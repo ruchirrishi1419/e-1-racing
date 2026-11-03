@@ -28,109 +28,96 @@
   // type 'spline'  = smooth flowing curves through the points
   // type 'corners' = straight lines with rounded corners of radius "radius"
   // type 'poly'    = points are already dense, use them as they are
-  // Every track is long like a real circuit (about 1:20 - 1:40 per lap at racing speed),
-  // with a long main straight, hairpins, chicanes (S-bends) and at least 10 corners.
-  //   scale      = makes the whole layout bigger or smaller
-  //   banked     = tilt the big fast corners (Oval)
-  //   elevation  = how much the road goes up and down hills (Mountain Pass)
+  // The 4 circuits are traced from track maps (points are pixel positions on the map,
+  // listed in the direction the cars drive, starting at the start/finish line).
+  //   scale      = map pixels -> game units (makes the lap the right length)
+  //   elevation  = how much the road goes up and down
   //   hills      = how big the hills are in the background
   //   theme.ground = which ground texture to use around the track
   const DEFINITIONS = [
     {
-      name: 'Oval Speedway',
-      difficulty: 'Easy',
-      description: 'A huge oval with two banked turns, a back-straight chicane and a twisty infield.',
+      name: 'Bahrain',
+      difficulty: 'Medium',
+      description: 'Desert circuit: long straights and heavy braking into slow corners. 15 corners.',
       type: 'spline',
-      scale: 1.75,
+      scale: 14,
       points: [
-        [2600, 0], [5000, 0], [7500, 0], [8300, 330], [8600, 1100], [8300, 1870], [7500, 2200],
-        [6600, 2200], [6200, 2200], [5900, 2020], [5600, 2200], [5000, 2200],
-        [4500, 2100], [4250, 1700], [4700, 1300], [4250, 850], [3600, 700], [3050, 1100],
-        [3450, 1550], [2950, 1800], [2400, 2200], [1500, 2200], [700, 1870], [400, 1100],
-        [700, 330], [1500, 0]
+        [345, 458], [200, 458], [70, 458], [45, 452], [62, 432], [88, 410], [84, 385], [78, 356],
+        [92, 240], [105, 130], [110, 110], [135, 128], [190, 180], [232, 205], [235, 235], [230, 262],
+        [275, 305], [315, 335], [300, 342], [230, 335], [175, 330], [145, 345], [128, 368], [150, 380],
+        [300, 380], [440, 380], [458, 360], [440, 320], [365, 268], [340, 245], [350, 190], [387, 143],
+        [410, 165], [482, 282], [550, 420], [527, 458], [440, 458]
       ],
-      halfWidth: 80,
+      halfWidth: 66,
       runoff: 110,
-      banked: true,
-      elevation: 0,
-      hills: 70,
-      theme: { bg: '#3d6e33', runoff: '#4f9a3a', road: '#3b3d42', decor: 'trees', ground: 'grass' }
+      elevation: 12,
+      hills: 90,
+      theme: { bg: '#d9b778', runoff: '#e8cf98', road: '#4a4440', decor: 'cacti', ground: 'sand' }
     },
     {
-      name: 'City Circuit',
-      difficulty: 'Medium',
-      description: 'A long street race with 18 tight corners between the city blocks.',
-      type: 'corners',
-      radius: 85,
-      scale: 1.2,
+      name: 'Spa-Francorchamps',
+      difficulty: 'Hard',
+      description: 'Long, fast and hilly: La Source hairpin, the Eau Rouge climb and the Kemmel straight. 19 corners.',
+      type: 'spline',
+      scale: 16,
       points: [
-        [3200, 400], [7000, 400], [7000, 1500], [8000, 1500], [8000, 3000], [6600, 3000],
-        [6600, 2200], [5400, 2200], [5400, 3600], [4400, 3600], [4400, 2900], [3200, 2900],
-        [3200, 4200], [1600, 4200], [1600, 2600], [2400, 2600], [2400, 1600], [1200, 1600],
-        [1200, 400]
+        [130, 345], [85, 383], [48, 415], [38, 420], [45, 405], [80, 345], [120, 285], [150, 248],
+        [158, 222], [175, 212], [200, 205], [260, 170], [340, 120], [420, 80], [478, 50], [495, 62],
+        [520, 58], [545, 45], [575, 65], [605, 95], [620, 120], [612, 138], [592, 130], [565, 116], [540, 112],
+        [500, 122], [455, 145], [425, 165], [410, 180], [425, 212], [470, 240], [515, 262], [530, 282],
+        [548, 312], [580, 335], [600, 352], [598, 385], [588, 415], [565, 405], [515, 368], [462, 332],
+        [415, 300], [378, 280], [335, 270], [290, 285], [240, 305], [195, 318], [185, 305], [178, 300],
+        [155, 325]
       ],
       halfWidth: 60,
-      runoff: 55,
-      elevation: 0,
+      runoff: 95,
+      elevation: 120,
+      hills: 380,
+      theme: { bg: '#2c5a31', runoff: '#3f7f3a', road: '#3a3a3f', decor: 'pines', ground: 'grass' }
+    },
+    {
+      name: 'Monaco',
+      difficulty: 'Expert',
+      description: 'Narrow streets between buildings: tight hairpins, the tunnel and the swimming pool chicane. 19 corners.',
+      type: 'spline',
+      scale: 19,
+      points: [
+        [118, 140], [150, 108], [185, 85], [213, 76], [235, 92], [275, 130], [310, 160], [338, 172],
+        [365, 190], [385, 202], [398, 185], [410, 165], [440, 160], [480, 160], [510, 163], [500, 180],
+        [488, 203], [486, 214], [495, 210], [510, 194], [522, 196], [535, 207], [520, 225], [470, 245],
+        [418, 258], [370, 240], [330, 215], [305, 190], [288, 183], [265, 160], [235, 128], [212, 108],
+        [185, 112], [160, 122], [145, 130], [140, 140], [143, 160], [133, 180], [116, 184], [105, 200],
+        [100, 212], [90, 238], [78, 236], [70, 224], [80, 200], [100, 165]
+      ],
+      halfWidth: 46,
+      runoff: 32,
+      elevation: 30,
       hills: 0,
       theme: { bg: '#585d66', runoff: '#8d939b', road: '#2e3035', decor: 'buildings', ground: 'concrete' }
     },
     {
-      name: 'Mountain Pass',
+      name: 'Buddh (India)',
       difficulty: 'Medium',
-      description: 'Long winding S-curves and switchbacks, climbing up and down the hills.',
+      description: 'Wide and fast with a huge back straight and a long looping corner. 16 corners.',
       type: 'spline',
-      scale: 1.6,
+      scale: 11,
       points: [
-        [2200, 500], [4800, 500], [6000, 700], [6800, 1300], [6200, 1900], [7000, 2500],
-        [6300, 3100], [7100, 3800], [6600, 4600], [5600, 4500], [5000, 3800], [4400, 4600],
-        [3600, 5000], [2800, 4500], [2000, 5000], [1200, 4600], [800, 3900], [1500, 3300],
-        [800, 2700], [1500, 2100], [900, 1500], [1200, 800]
+        [740, 503], [850, 495], [940, 487], [965, 490], [972, 520], [978, 560], [1000, 610], [1060, 650],
+        [1110, 670], [1130, 685], [1110, 700], [1000, 703], [700, 705], [400, 708], [260, 712], [240, 700],
+        [255, 680], [310, 600], [385, 518], [440, 450], [470, 410], [472, 372], [470, 350], [440, 335],
+        [430, 328], [380, 318], [300, 300], [290, 280], [280, 265], [200, 230], [110, 200], [80, 185],
+        [72, 150], [78, 110], [110, 82], [160, 75], [205, 85], [220, 105], [240, 135], [290, 195],
+        [330, 240], [370, 248], [410, 230], [430, 225], [520, 255], [600, 285], [612, 305], [600, 330],
+        [552, 395], [495, 462], [465, 508], [470, 520], [560, 515], [650, 510]
       ],
-      halfWidth: 64,
-      runoff: 85,
-      elevation: 110,
-      hills: 420,
-      theme: { bg: '#2c5a31', runoff: '#3f7f3a', road: '#3a3a3f', decor: 'pines', ground: 'rock' }
-    },
-    {
-      name: 'Desert Loop',
-      difficulty: 'Hard',
-      description: 'Enormous flat-out straights and huge braking zones into tight hairpins.',
-      type: 'corners',
-      radius: 240,
-      scale: 1.43,
-      points: [
-        [2000, 500], [9000, 500], [9000, 1100], [6000, 1100], [5400, 1700], [6200, 2300],
-        [9000, 2300], [9000, 2800], [3000, 2800], [2500, 2300], [3000, 1600], [1500, 1600],
-        [1500, 500]
-      ],
-      halfWidth: 68,
-      runoff: 110,
-      elevation: 0,
-      hills: 110,
-      theme: { bg: '#d9b778', runoff: '#e8cf98', road: '#4a4440', decor: 'cacti', ground: 'sand' }
-    },
-    {
-      name: 'Grand Prix',
-      difficulty: 'Expert',
-      description: 'The longest and most technical circuit: every kind of corner.',
-      type: 'spline',
-      scale: 1.22,
-      points: [
-        [2500, 500], [6500, 500], [7300, 650], [7500, 1200], [7000, 1600], [7600, 2100],
-        [8600, 2000], [9300, 2500], [9100, 3300], [8300, 3500], [7900, 4200], [8600, 4900],
-        [8000, 5600], [7000, 5400], [6300, 4600], [5600, 5300], [4600, 5500], [3800, 5000],
-        [3200, 5500], [2200, 5400], [1600, 4700], [2200, 4000], [1500, 3300], [2300, 2700],
-        [3300, 2900], [4000, 2400], [3400, 1800], [2200, 1900], [1400, 1400], [1500, 800]
-      ],
-      halfWidth: 62,
-      runoff: 100,
-      elevation: 25,
-      hills: 160,
-      theme: { bg: '#2b5e2e', runoff: '#4c8f3c', road: '#35363b', decor: 'trees', ground: 'grass' }
+      halfWidth: 66,
+      runoff: 105,
+      elevation: 15,
+      hills: 70,
+      theme: { bg: '#3d6e33', runoff: '#4f9a3a', road: '#3b3d42', decor: 'trees', ground: 'grass' }
     }
   ];
+
 
   /* ---------------- Shape helpers ---------------- */
 
@@ -266,6 +253,7 @@
       checkpoints: Math.max(10, Math.round(length / 1800)),
       theme: def.theme,
       banked: !!def.banked,
+      origin: { ox, oy, scale: def.scale || 1 },   // to map back to the original track map (for testing)
       elevation: def.elevation || 0,
       hills: def.hills || 0,
       path,
