@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<!-- =====================================================================
+     E1 - EQUATION 1 : the web page
+     It has several "screens". Only one is visible at a time:
+       1. Main menu   (Play Offline / Host Game / Join Game)
+       2. Offline     (set up a race against AI cars)
+       3. Lobby       (online: players, colors, track & laps)
+       4. Race        (the game itself)
+       5. Results     (final positions)
+     ===================================================================== -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f14">
+  <meta name="description" content="E1 - Equation 1: top-down multiplayer racing for up to 10 friends, right in your browser.">
+  <title>E1 – Equation 1</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff3b30'/%3E%3Ctext x='32' y='45' font-family='Arial Black,Arial' font-weight='900' font-style='italic' font-size='34' text-anchor='middle' fill='white'%3EE1%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ 1. MAIN MENU ============ -->
+  <section id="screen-home" class="screen active">
+    <div class="home-box">
+      <!-- The E1 logo: an original design made from shapes and text -->
+      <svg class="logo" viewBox="0 0 360 150" role="img" aria-label="E1 – Equation 1">
+        <defs>
+          <linearGradient id="logo-fill" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff5a4f"/>
+            <stop offset="1" stop-color="#c8170c"/>
+          </linearGradient>
+        </defs>
+        <g transform="skewX(-16) translate(40 0)">
+          <!-- speed stripes -->
+          <rect x="0" y="34" width="70" height="9" rx="4" fill="#ffcc00"/>
+          <rect x="18" y="56" width="52" height="9" rx="4" fill="#ffcc00" opacity="0.75"/>
+          <rect x="34" y="78" width="36" height="9" rx="4" fill="#ffcc00" opacity="0.5"/>
+          <!-- big E1 letters -->
+          <text x="78" y="118" font-family="Russo One, Arial Black, sans-serif" font-size="128"
+                fill="url(#logo-fill)" stroke="#000" stroke-width="6" paint-order="stroke">E1</text>
+          <!-- chequered strip underneath -->
+          <g transform="translate(84 128)">
+            <rect width="190" height="12" fill="#fff"/>
+            <path d="M0 0h12v6H0zM24 0h12v6H24zM48 0h12v6H48zM72 0h12v6H72zM96 0h12v6H96zM120 0h12v6h-12zM144 0h12v6h-12zM168 0h12v6h-12z
+                     M12 6h12v6H12zM36 6h12v6H36zM60 6h12v6H60zM84 6h12v6H84zM108 6h12v6h-12zM132 6h12v6h-12zM156 6h12v6h-12zM180 6h10v6h-10z" fill="#111"/>
+          </g>
+        </g>
+      </svg>
+      <div class="logo-sub">E1 <span>–</span> EQUATION 1</div>
+      <p class="tagline">Top-down racing for up to 10 friends</p>
+
+      <label class="field">
+        <span>Your name</span>
+        <input id="input-name" type="text" maxlength="14" placeholder="e.g. Speedy" autocomplete="off">
+      </label>
+
+      <div class="menu-buttons">
+        <button id="btn-offline" class="btn btn-primary">Play Offline <small>Race against AI cars</small></button>
+        <button id="btn-host" class="btn btn-secondary">Host Game <small>Get a code for your friends</small></button>
+        <button id="btn-show-join" class="btn btn-secondary">Join Game <small>Enter a friend's code</small></button>
+      </div>
+
+      <div id="join-panel" class="join-panel hidden">
+        <label class="field">
+          <span>Joining code</span>
+          <input id="input-code" type="text" maxlength="6" placeholder="K7P2XQ" autocomplete="off" autocapitalize="characters">
+        </label>
+        <button id="btn-join" class="btn btn-primary">Join</button>
+      </div>
+
+      <p id="home-error" class="error"></p>
+      <p class="hint">Drive with Arrow keys or W A S D &nbsp;·&nbsp; Phones get touch buttons</p>
+    </div>
+  </section>
+
+  <!-- ============ 2. OFFLINE SETUP ============ -->
+  <section id="screen-offline" class="screen">
+    <div class="lobby">
+      <h1 class="screen-title">Play Offline</h1>
+      <div class="lobby-grid">
+        <div class="panel">
+          <h2>Your car color</h2>
+          <div id="offline-colors" class="color-picker"></div>
+          <h3>AI cars</h3>
+          <div id="offline-ai" class="lap-picker"></div>
+        </div>
+        <div class="panel">
+          <h2>Track</h2>
+          <div id="offline-tracks" class="track-picker"></div>
+          <h3>Laps</h3>
+          <div id="offline-laps" class="lap-picker"></div>
+        </div>
+      </div>
+      <div class="lobby-actions">
+        <button id="btn-offline-back" class="btn btn-secondary">Back</button>
+        <button id="btn-offline-start" class="btn btn-primary btn-big">Start Race</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. ONLINE LOBBY ============ -->
+  <section id="screen-lobby" class="screen">
+    <div class="lobby">
+      <div class="code-box">
+        <div class="code-label">JOINING CODE</div>
+        <div id="lobby-code" class="code">------</div>
+        <div class="code-help">Send this code to your friends so they can join</div>
+      </div>
+
+      <div class="lobby-grid">
+        <div class="panel">
+          <h2>Players <span id="player-count">0/10</span></h2>
+          <ul id="player-list" class="player-list"></ul>
+          <h2>Your car color</h2>
+          <div id="color-picker" class="color-picker"></div>
+          <p id="lobby-error" class="error"></p>
+        </div>
+
+        <div class="panel">
+          <h2>Race settings <span id="settings-note" class="note"></span></h2>
+          <div id="track-picker" class="track-picker"></div>
+          <h3>Laps</h3>
+          <div id="lap-picker" class="lap-picker"></div>
+        </div>
+      </div>
+
+      <div class="lobby-actions">
+        <button id="btn-leave-lobby" class="btn btn-secondary">Leave</button>
+        <button id="btn-start" class="btn btn-primary btn-big">Start Race</button>
+        <p id="waiting-text" class="waiting">Waiting for the host to start the race…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. RACE SCREEN ============ -->
+  <section id="screen-race" class="screen">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Lap, position and times (top-left) -->
+    <div id="hud" class="hud">
+      <div class="hud-row"><span class="hud-label">LAP</span><span id="hud-lap" class="hud-value">1/3</span></div>
+      <div class="hud-row"><span class="hud-label">POS</span><span id="hud-pos" class="hud-value">1/1</span></div>
+      <div class="hud-row small"><span class="hud-label">TIME</span><span id="hud-time">0:00.000</span></div>
+      <div class="hud-row small"><span class="hud-label">BEST</span><span id="hud-best">--</span></div>
+      <div class="hud-row small"><span class="hud-label">SPEED</span><span id="hud-speed">0 km/h</span></div>
+    </div>
+
+    <!-- Live leaderboard (top-right) -->
+    <div id="leaderboard" class="leaderboard"></div>
+
+    <!-- Mini-map -->
+    <canvas id="minimap" class="minimap"></canvas>
+
+    <!-- Start lights -->
+    <div id="start-lights" class="start-lights hidden">
+      <div class="light"></div><div class="light"></div><div class="light"></div>
+    </div>
+
+    <!-- Big messages (GO!, WINNER!, etc.) -->
+    <div id="big-message" class="big-message"></div>
+    <div id="finish-timer" class="finish-timer hidden"></div>
+
+    <!-- Sound on/off and quit -->
+    <div class="race-buttons">
+      <button id="btn-mute" class="icon-btn" title="Sound on/off" aria-label="Sound on/off">🔊</button>
+      <button id="btn-quit" class="icon-btn" title="Quit to main menu" aria-label="Quit to main menu">✕</button>
+    </div>
+
+    <!-- Touch buttons for phones -->
+    <div id="touch-controls" class="touch-controls hidden">
+      <div class="touch-left">
+        <button class="touch-btn" data-control="left" aria-label="Steer left">◀</button>
+        <button class="touch-btn" data-control="right" aria-label="Steer right">▶</button>
+      </div>
+      <div class="touch-right">
+        <button class="touch-btn brake" data-control="down" aria-label="Brake">BRAKE</button>
+        <button class="touch-btn gas" data-control="up" aria-label="Accelerate">GAS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5. RESULTS SCREEN ============ -->
+  <section id="screen-results" class="screen">
+    <div class="results">
+      <h1 class="results-title">RACE RESULTS</h1>
+      <p id="results-sub" class="results-sub"></p>
+      <table class="results-table">
+        <thead><tr><th>Pos</th><th>Driver</th><th>Total time</th><th>Best lap</th></tr></thead>
+        <tbody id="results-body"></tbody>
+      </table>
+      <div class="results-actions">
+        <button id="btn-main-menu" class="btn btn-secondary">Main Menu</button>
+        <button id="btn-race-again" class="btn btn-primary btn-big">Race Again</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pop-up notices (e.g. "Sam left the game") -->
+  <div id="toasts" class="toasts"></div>
+
+  <!-- Scripts: Socket.io (made by the server), shared rules, then our game files -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/tracks.js"></script>
+  <script src="/shared/physics.js"></script>
+  <script src="/shared/race.js"></script>
+  <script src="/shared/ai.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/offline.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

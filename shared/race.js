@@ -1,0 +1,130 @@
+/* =====================================================================
+   E1 (EQUATION 1) - RACE RULES  (shared by the server AND the browser)
+   ---------------------------------------------------------------------
+   The rules for laps, checkpoints, positions and finishing.
+   The online server uses these, and so does "Play Offline", so both
+   modes work exactly the same way.
+   ===================================================================== */
+
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./tracks'));
+  else root.RaceRules = factory(root.Tracks);
+})(typeof self !== 'undefined' ? self : this, function (Tracks) {
+  'use strict';
+
+  const MAX_PLAYERS = 10;
+  const MIN_LAPS = 3, MAX_LAPS = 7;
+  const FINISH_GRACE_MS = 30000; // time the others get after the winner finishes
+
+  // The 10 car colors
+  const COLORS = [
+    { id: 'red', label: 'Red', hex: '#e53935' },
+    { id: 'blue', label: 'Blue', hex: '#1e88e5' },
+    { id: 'green', label: 'Green', hex: '#43a047' },
+    { id: 'yellow', label: 'Yellow', hex: '#fdd835' },
+    { id: 'orange', label: 'Orange', hex: '#fb8c00' },
+    { id: 'purple', label: 'Purple', hex: '#8e24aa' },
+    { id: 'pink', label: 'Pink', hex: '#f06292' },
+    { id: 'white', label: 'White', hex: '#f5f5f5' },
+    { id: 'black', label: 'Black', hex: '#212121' },
+    { id: 'cyan', label: 'Cyan', hex: '#00e5ff' }
+  ];
+
+  // A fresh racer standing on grid slot "slot"
+  function newRacer(track, slot) {
+    const g = Tracks.gridSlot(track, slot);
+    return {
+      slot, x: g.x, y: g.y, a: g.angle, vx: 0, vy: 0, d: false, ts: Date.now(),
+      s: 0.99, lap: 0, cp: 0, lapStart: 0, bestLap: null, lastLap: null,
+      finished: false, finishTime: null, progress: -0.01
+    };
+  }
+
+  // Difference between two lap fractions, between -0.5 and 0.5
+  function wrapDiff(a, b) {
+    let d = a - b;
+    while (d > 0.5) d -= 1;
+    while (d < -0.5) d += 1;
+    return d;
+  }
+
+  /* Call this after a racer moves (r.x / r.y already updated).
+     Checkpoints are evenly spaced around the lap. They must be passed IN ORDER,
+     then the start/finish line, for a lap to count. No shortcuts!
+     race = { laps, startTime, finishOrder: [] }
+     Returns null, or { lap, lapTime, isBest, place } when a lap was completed
+     ("place" is only set when the racer just finished the whole race). */
+  function updateProgress(id, r, track, race, now) {
+    if (r.finished) return null;
+    r.s = Tracks.nearest(track, r.x, r.y).s;
+    const N = track.checkpoints;
+    const target = r.cp < N - 1 ? (r.cp + 1) / N : 0; // next checkpoint (0 = finish line)
+    const diff = wrapDiff(r.s, target);
+    let result = null;
+
+    if (diff >= 0 && diff < 0.05) {
+      if (target !== 0) {
+        r.cp += 1;
+      } else {
+        // Lap complete!
+        const lapTime = now - r.lapStart;
+        r.lap += 1;
+        r.cp = 0;
+        r.lastLap = lapTime;
+        const isBest = r.bestLap === null || lapTime < r.bestLap;
+        if (isBest) r.bestLap = lapTime;
+        r.lapStart = now;
+        result = { lap: r.lap, lapTime, isBest, place: null };
+        if (r.lap >= race.laps) {
+          r.finished = true;
+          r.finishTime = now - race.startTime;
+          race.finishOrder.push(id);
+          result.place = race.finishOrder.length;
+        }
+      }
+    }
+
+    // "progress" ranks the racers: laps done + how far into the current lap
+    const base = r.cp / N;
+    const rel = Math.max(-1 / N, Math.min(1 / N, wrapDiff(r.s, base)));
+    r.progress = r.lap + base + rel;
+    return result;
+  }
+
+  // Sort racers: finished ones by finish order, then everyone else by progress.
+  // list = [{ id, race }]
+  function standings(list, finishOrder) {
+    return list.slice().sort((a, b) => {
+      const fa = finishOrder.indexOf(a.id), fb = finishOrder.indexOf(b.id);
+      if (fa !== -1 || fb !== -1) {
+        if (fa === -1) return 1;
+        if (fb === -1) return -1;
+        return fa - fb;
+      }
+      return b.race.progress - a.race.progress;
+    });
+  }
+
+  // One car's entry in the 20-times-a-second race update
+  function stateRow(id, r, pos, now, racing) {
+    return {
+      id, x: Math.round(r.x * 10) / 10, y: Math.round(r.y * 10) / 10,
+      a: Math.round(r.a * 1000) / 1000, vx: Math.round(r.vx), vy: Math.round(r.vy),
+      d: r.d, ts: r.ts, pos, lap: r.lap, cp: r.cp,
+      best: r.bestLap, last: r.lastLap, fin: r.finished, total: r.finishTime,
+      cur: racing && !r.finished ? now - r.lapStart : null
+    };
+  }
+
+  // One line of the final results table
+  function resultRow(p, place) {
+    return {
+      place, id: p.id, name: p.name, color: p.color,
+      finished: p.race.finished, totalTime: p.race.finishTime,
+      bestLap: p.race.bestLap, laps: p.race.lap
+    };
+  }
+
+  return { MAX_PLAYERS, MIN_LAPS, MAX_LAPS, FINISH_GRACE_MS, COLORS,
+           newRacer, updateProgress, standings, stateRow, resultRow };
+});
