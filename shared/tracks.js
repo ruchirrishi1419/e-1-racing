@@ -50,7 +50,7 @@
       ],
       halfWidth: 66,
       runoff: 110,
-      elevation: 12,
+      elevation: 0,
       hills: 90,
       theme: { bg: '#d9b778', runoff: '#e8cf98', road: '#4a4440', decor: 'cacti', ground: 'sand' }
     },
@@ -71,8 +71,8 @@
       ],
       halfWidth: 60,
       runoff: 95,
-      elevation: 120,
-      hills: 380,
+      elevation: 0,
+      hills: 260,
       theme: { bg: '#2c5a31', runoff: '#3f7f3a', road: '#3a3a3f', decor: 'pines', ground: 'grass' }
     },
     {
@@ -91,7 +91,7 @@
       ],
       halfWidth: 46,
       runoff: 32,
-      elevation: 30,
+      elevation: 0,
       hills: 0,
       theme: { bg: '#585d66', runoff: '#8d939b', road: '#2e3035', decor: 'buildings', ground: 'concrete' }
     },
@@ -112,7 +112,7 @@
       ],
       halfWidth: 66,
       runoff: 105,
-      elevation: 15,
+      elevation: 0,
       hills: 70,
       theme: { bg: '#3d6e33', runoff: '#4f9a3a', road: '#3b3d42', decor: 'trees', ground: 'grass' }
     }

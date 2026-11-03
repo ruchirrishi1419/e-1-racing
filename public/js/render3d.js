@@ -41,6 +41,9 @@ const QUALITY = {
 // (the helmet is at x = -2.8, the airbox behind it is about 8 high)
 const EYE = new THREE.Vector3(-11.5, 10.2, 0);
 const LOOK = new THREE.Vector3(150, 1, 0);   // the point it looks at, far ahead on the track
+// Rear view (hold Tab / Y): camera above the front of the cockpit, looking backwards
+const REAR_EYE = new THREE.Vector3(3, 11.5, 0);
+const REAR_LOOK = new THREE.Vector3(-160, 3, 0);
 
 let renderer = null, canvas = null, currentAntialias = null, roomEnv = null;
 let scene = null, camera = null, composer = null, bloomPass = null, blurPass = null;
@@ -277,7 +280,9 @@ function placeOnGround(group, x, y, a) {
   const fx = Math.cos(a), fy = Math.sin(a);
   const hF = h(x + fx * 16, y + fy * 16), hB = h(x - fx * 16, y - fy * 16);
   const hR = h(x - fy * 8, y + fx * 8), hL = h(x + fy * 8, y - fx * 8);
-  group.position.set(x, (hF + hB + hR + hL) / 4, y);
+  // Sit on the highest point under the car (+0.6 = the road surface), so it can never sink in
+  const ground = Math.max(h(x, y), (hF + hB) / 2, (hR + hL) / 2) + 0.6;
+  group.position.set(x, ground, y);
   group.rotation.set(-Math.atan((hR - hL) / 16), -a, Math.atan((hF - hB) / 32));
 }
 
@@ -345,8 +350,9 @@ function frame(data) {
   // T-cam: on top of the car behind the helmet, looking forward (it leans with hills and banking)
   if (mine) {
     mine.group.updateMatrixWorld();
-    camera.position.copy(EYE).applyMatrix4(mine.group.matrixWorld);
-    tmpV.copy(LOOK).applyMatrix4(mine.group.matrixWorld);
+    const back = !!data.lookBack;
+    camera.position.copy(back ? REAR_EYE : EYE).applyMatrix4(mine.group.matrixWorld);
+    tmpV.copy(back ? REAR_LOOK : LOOK).applyMatrix4(mine.group.matrixWorld);
     camera.up.set(0, 1, 0).applyQuaternion(mine.group.quaternion);
     camera.lookAt(tmpV);
     camera.rotateX(jitter() * 0.0035);

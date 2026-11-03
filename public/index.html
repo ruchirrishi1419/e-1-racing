@@ -88,7 +88,8 @@
         </div>
       </div>
 
-      <p class="hint">Drive with Arrow keys or W A S D &nbsp;·&nbsp; Phones get touch buttons</p>
+      <button id="btn-controls" class="btn btn-secondary controls-btn">🎮 Controls (keyboard &amp; controller)</button>
+      <p class="hint">Arrow keys / W A S D &nbsp;·&nbsp; game controllers &nbsp;·&nbsp; phone touch buttons</p>
     </div>
   </section>
 
@@ -171,6 +172,9 @@
       <div class="hud-row small"><span class="hud-label">GEAR</span><span id="hud-gear">N</span></div>
     </div>
 
+    <!-- Shown while looking backwards -->
+    <div id="rear-label" class="rear-label hidden">◀ REAR VIEW</div>
+
     <!-- "Ruchir overtakes Alex for P3" -->
     <div id="overtakes" class="overtakes"></div>
 
@@ -200,6 +204,7 @@
       <div class="touch-left">
         <button class="touch-btn" data-control="left" aria-label="Steer left">◀</button>
         <button class="touch-btn" data-control="right" aria-label="Steer right">▶</button>
+        <button class="touch-btn rear" data-control="lookBack" aria-label="Rear view">REAR</button>
       </div>
       <div class="touch-right">
         <button class="touch-btn brake" data-control="down" aria-label="Brake">BRAKE</button>
@@ -223,6 +228,28 @@
       </div>
     </div>
   </section>
+
+
+  <!-- ============ CONTROLS GUIDE (main menu button, and shown before every race) ============ -->
+  <div id="controls-modal" class="modal hidden" role="dialog" aria-label="Controls">
+    <div class="modal-box">
+      <h2>How to drive</h2>
+      <table class="controls-table">
+        <thead><tr><th>Action</th><th>⌨️ Keyboard</th><th>🎮 Controller</th><th>📱 Phone</th></tr></thead>
+        <tbody>
+          <tr><td>Accelerate</td><td><kbd>↑</kbd> or <kbd>W</kbd></td><td>Right trigger (RT / R2) or <b>A</b> / ✕</td><td>GAS</td></tr>
+          <tr><td>Brake / reverse</td><td><kbd>↓</kbd> or <kbd>S</kbd></td><td>Left trigger (LT / L2) or <b>B</b> / ◯</td><td>BRAKE</td></tr>
+          <tr><td>Steer</td><td><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd></td><td>Left stick or D-pad</td><td>◀ ▶</td></tr>
+          <tr><td>Rear view (hold)</td><td><kbd>Tab</kbd></td><td><b>Y</b> / △</td><td>REAR</td></tr>
+        </tbody>
+      </table>
+      <p class="controls-tip">🎮 Controller: plug it in (or connect by Bluetooth) and <b>press any button</b> once so the browser notices it.
+        Triggers and the stick work smoothly - press a little for a little, all the way for full power.</p>
+      <p class="controls-tip">🏁 Tip: follow the racing line - <span style="color:#2ee05a">green</span> = accelerate,
+        <span style="color:#ffd21f">yellow</span> = ease off, <span style="color:#ff3b30">red</span> = brake.</p>
+      <button id="btn-controls-close" class="btn btn-primary">Got it</button>
+    </div>
+  </div>
 
   <!-- Pop-up notices (e.g. "Sam left the game") -->
   <div id="toasts" class="toasts"></div>

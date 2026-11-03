@@ -53,10 +53,13 @@
     const onGrass = car.surface === 'grass';
 
     // --- Gas, brake and reverse ---
-    if (input.up) {
-      forward += (forward < 0 ? TUNING.brake : TUNING.accel) * dt;
-    } else if (input.down) {
-      forward -= (forward > 15 ? TUNING.brake : TUNING.reverseAccel) * dt;
+    // (a game controller can press the pedals halfway: throttle / brake from 0 to 1)
+    const gas = input.throttle !== undefined ? input.throttle : (input.up ? 1 : 0);
+    const brk = input.brake !== undefined ? input.brake : (input.down ? 1 : 0);
+    if (gas > 0.02) {
+      forward += (forward < 0 ? TUNING.brake : TUNING.accel) * gas * dt;
+    } else if (brk > 0.02) {
+      forward -= (forward > 15 ? TUNING.brake : TUNING.reverseAccel) * brk * dt;
     } else {
       // No pedal pressed: slowly roll to a stop
       const r = TUNING.rolling * dt;
@@ -71,7 +74,8 @@
 
     // --- Steering ---
     // The steering wheel moves smoothly towards full lock (keys are just on/off)
-    const target = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    // (a controller stick gives any amount between -1 and 1)
+    const target = input.steer !== undefined ? Math.max(-1, Math.min(1, input.steer)) : (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const rate = (target === 0 ? TUNING.steerReturn : TUNING.steerSpeed) * dt;
     car.steer = car.steer || 0;
     car.steer += Math.max(-rate, Math.min(rate, target - car.steer));
@@ -97,7 +101,7 @@
     car.x += car.vx * dt;
     car.y += car.vy * dt;
     car.speed = forward;
-    car.drifting = Math.abs(side) > 70 || (input.down && forward > 250);
+    car.drifting = Math.abs(side) > 70 || (brk > 0.5 && forward > 250);
 
     // --- Grass and barriers ---
     keepOnTrack(car, track);

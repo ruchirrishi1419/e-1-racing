@@ -12,6 +12,7 @@ const Game = (() => {
   const canvas = document.getElementById('game-canvas');
   const ctx = canvas.getContext('2d');
 
+  const rearLabel = document.getElementById('rear-label');
   const STEP = 1 / 60;          // physics runs in fixed steps of 1/60 second
   const SEND_EVERY = 0.05;      // send my position every 0.05 s (20 times a second)
   const INTERP_DELAY = 150;     // show other cars 150 ms "in the past" so they move smoothly
@@ -282,7 +283,9 @@ const Game = (() => {
     players.forEach(p => { if (p.id !== myId) interpolate(p); });
 
     // Move my car in fixed small steps (keeps physics the same on every computer)
-    const input = locked ? { up: false, down: false, left: false, right: false } : Input.state;
+    // keyboard + game controller + touch buttons (read fresh every frame)
+    const controls = Input.poll();
+    const input = locked ? { up: false, down: false, left: false, right: false } : controls;
     accumulator += dt;
     let strongestBump = 0, strongestWall = 0;
     while (accumulator >= STEP) {
@@ -361,12 +364,14 @@ const Game = (() => {
         },
         cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a })),
         leaderId: order[0],
+        lookBack: controls.lookBack,
         racingLine: showRacingLine
       });
     } else {
       render(speedRatio);
     }
     updateHud(now);
+    rearLabel.classList.toggle('hidden', !controls.lookBack);
   }
 
   function updateHud(now) {

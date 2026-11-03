@@ -73,6 +73,15 @@
   });
   renderSettings();
 
+  /* ---------------- Controls guide (keyboard, controller, phone) ---------------- */
+  function showControls(onGrid) {
+    $('controls-modal').classList.remove('hidden');
+    $('controls-modal').classList.toggle('race-guide', !!onGrid);   // on the grid: smaller, clicks pass through
+  }
+  function hideControls() { $('controls-modal').classList.add('hidden'); }
+  $('btn-controls').addEventListener('click', () => { Sound.init(); showControls(false); });
+  $('btn-controls-close').addEventListener('click', hideControls);
+
   // A row of buttons for a list of choices, e.g. Day / Sunset / Night
   function choicePicker(box, choices, selected, disabled, onPick) {
     box.innerHTML = '';
@@ -224,6 +233,7 @@
   });
 
   function toMainMenu() {
+    hideControls();
     if (mode === 'online' && currentCode) socket.emit('leaveRoom');
     Offline.stop();
     Game.stop();
@@ -336,6 +346,7 @@
       show('race');
       Hud.setLights(0);
       Hud.clearTower();
+      showControls(true);   // remind everyone of the controls while the lights count down
       Hud.message(Tracks.get(data.trackId).name, `${data.laps} laps`, 900);
       Game.start({
         trackId: data.trackId,
@@ -363,6 +374,7 @@
       Game.setLights('go');
       Sound.go();
       Hud.message('GO!', '', 900);
+      setTimeout(hideControls, 600);
       Game.go();
     },
 

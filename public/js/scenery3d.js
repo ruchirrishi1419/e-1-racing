@@ -313,10 +313,29 @@ export function buildScenery(ctx) {
 
   /* --- Pit lane and pit building --- */
   const pitFrom = Math.max(straightStart, -170), pitTo = Math.min(straightEnd, 110);
+  // Is there room beside the main straight at index i? (no OTHER part of the circuit close by,
+  // e.g. Monaco's swimming pool section or Spa's climb to Eau Rouge)
+  const farPts = [];
+  for (let k = 0; k < n; k += 4) farPts.push(k);
+  function otherDist(x, y, i0) {
+    let best = Infinity;
+    farPts.forEach(k => {
+      const di = Math.abs(((k - i0) % n + n + n / 2) % n - n / 2);
+      if (di < 300) return;                     // this is the main straight itself
+      const p = an.info[k];
+      best = Math.min(best, Math.hypot(p.x - x, p.y - y));
+    });
+    return best;
+  }
+  const pitOK = i => [wallD + 10, wallD + 80, wallD + 165].every(d => {
+    const sp = spot(i, pitSide, d);
+    return otherDist(sp.x, sp.y, i) > wallD + 30;
+  });
   const pitParts = [], garageSpots = [];
   const pitLaneMat = M({ color: '#55585e', roughness: 0.9 });
   const laneGeo = [];
   for (let i = pitFrom; i < pitTo; i += 2) {
+    if (!pitOK(i) || !pitOK(i + 2)) continue;
     const a = spot(i, pitSide, wallD + 4), b = spot(i + 2, pitSide, wallD + 4);
     const c = spot(i + 2, pitSide, wallD + 70), d = spot(i, pitSide, wallD + 70);
     laneGeo.push(...[a, b, c, a, c, d].map(p => [p.x, heightAt(p.x, p.y) + 0.5, p.y]).flat());
@@ -329,6 +348,7 @@ export function buildScenery(ctx) {
   laneMesh.receiveShadow = true;
   group.add(laneMesh);
   for (let i = pitFrom; i < pitTo; i += 2) {
+    if (!pitOK(i)) continue;
     const sp = spot(i, pitSide, wallD + 40);
     mark(sp.x, sp.y, 0, 60, 60);
   }
@@ -353,6 +373,7 @@ export function buildScenery(ctx) {
   const pitBuild = new THREE.Group();
   const buildingGeo = [], glassGeo = [], doorGeo = [];
   for (let i = pitFrom + 2; i < pitTo - 2; i += 2) {
+    if (!pitOK(i) || !pitOK(i + 2)) continue;
     const a = spot(i, pitSide, wallD + 72), b = spot(i + 2, pitSide, wallD + 72);
     const len = Math.hypot(b.x - a.x, b.y - a.y) + 0.5;
     const ang = Math.atan2(b.y - a.y, b.x - a.x);
@@ -376,7 +397,7 @@ export function buildScenery(ctx) {
   lodObjects.push({ obj: pitBuild, x: spot(0, pitSide, wallD + 110).x, y: spot(0, pitSide, wallD + 110).y, r: (pitTo - pitFrom) * 6 });
 
   // Grandstand on top of the pit building, near the start line
-  {
+  if ([-45, -30, -20, -10, 5].every(pitOK)) {
     const sp = spot(-20, pitSide, wallD + 112);
     const st = grandstand(260, 1, '#ececec');
     place(st.group, sp);
@@ -409,7 +430,7 @@ export function buildScenery(ctx) {
   }
 
   // Podium: three steps on a balcony at the front of the pit building
-  {
+  if ([20, 30, 40].every(pitOK)) {
     const sp = spot(30, pitSide, wallD + 58);
     const pod = new THREE.Group();
     const stepMat = M({ color: '#f5f5f5' });

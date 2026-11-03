@@ -177,7 +177,7 @@ export function buildHeights(track, an) {
   const best = new Float32Array(cols * rows).fill(1e9);  // distance from the centre line
   const offs = new Float32Array(cols * rows), idx = new Int32Array(cols * rows).fill(-1);
   const P = track.path, n = P.length, hw = track.halfWidth, wall = hw + track.runoff;
-  const reach = wall + 1100;
+  const reach = wall + 1500;
 
   // "Paint" every point near the track with its distance and side from the centre line
   for (let i = 0; i < n; i += 2) {
@@ -221,7 +221,8 @@ export function buildHeights(track, an) {
         }
       }
       const hills = track.hills * noise(x, y);
-      const f = smooth(wall + 70, wall + 900, d);
+      // keep everything flat near the track; hills only start well away from it
+      const f = smooth(wall + 450, wall + 1450, d);
       H[c] = trackH * (1 - f) + (hills + (idx[c] >= 0 ? trackH * 0.35 : 0)) * f;
     }
   }
