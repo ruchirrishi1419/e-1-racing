@@ -73,6 +73,27 @@
       </div>
 
       <p id="home-error" class="error"></p>
+
+      <!-- Settings (remembered on this device) -->
+      <div class="settings">
+        <div class="setting">
+          <span>Graphics</span>
+          <div id="set-graphics" class="seg">
+            <button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span>Racing line</span>
+          <div id="set-line" class="seg">
+            <button data-v="on">On</button><button data-v="off">Off</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span>Volume</span>
+          <input id="set-volume" type="range" min="0" max="100" value="70" aria-label="Volume">
+        </div>
+      </div>
+
       <p class="hint">Drive with Arrow keys or W A S D &nbsp;·&nbsp; Phones get touch buttons</p>
     </div>
   </section>
@@ -87,6 +108,8 @@
           <div id="offline-colors" class="color-picker"></div>
           <h3>AI cars</h3>
           <div id="offline-ai" class="lap-picker"></div>
+          <h3>Time of day</h3>
+          <div id="offline-tod" class="lap-picker tod-picker"></div>
         </div>
         <div class="panel">
           <h2>Track</h2>
@@ -125,6 +148,8 @@
           <div id="track-picker" class="track-picker"></div>
           <h3>Laps</h3>
           <div id="lap-picker" class="lap-picker"></div>
+          <h3>Time of day</h3>
+          <div id="tod-picker" class="lap-picker tod-picker"></div>
         </div>
       </div>
 
@@ -140,6 +165,7 @@
   <section id="screen-race" class="screen">
     <canvas id="game-3d"></canvas>      <!-- 3D view (T-cam) -->
     <canvas id="game-canvas"></canvas>  <!-- old 2D view, only used if 3D doesn't work on a device -->
+    <div id="visor" class="visor hidden"></div>  <!-- soft dark edges, like looking out of a helmet -->
 
     <!-- Lap, position and times (top-left) -->
     <div id="hud" class="hud">
@@ -148,7 +174,11 @@
       <div class="hud-row small"><span class="hud-label">TIME</span><span id="hud-time">0:00.000</span></div>
       <div class="hud-row small"><span class="hud-label">BEST</span><span id="hud-best">--</span></div>
       <div class="hud-row small"><span class="hud-label">SPEED</span><span id="hud-speed">0 km/h</span></div>
+      <div class="hud-row small"><span class="hud-label">GEAR</span><span id="hud-gear">N</span></div>
     </div>
+
+    <!-- "Ruchir overtakes Alex for P3" -->
+    <div id="overtakes" class="overtakes"></div>
 
     <!-- Live leaderboard (top-right) -->
     <div id="leaderboard" class="leaderboard"></div>
@@ -208,6 +238,7 @@
   <script src="/shared/tracks.js"></script>
   <script src="/shared/physics.js"></script>
   <script src="/shared/race.js"></script>
+  <script src="/shared/racingline.js"></script>
   <script src="/shared/ai.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/input.js"></script>

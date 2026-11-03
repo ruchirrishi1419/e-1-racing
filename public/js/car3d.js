@@ -194,8 +194,8 @@ function buildGeometry() {
     roundedPlate(-25.2, 3.0, -19.4, 8.9, 0.8, 0.3, 4.45),            // rear wing end plates
     roundedPlate(-25.2, 3.0, -19.4, 8.9, 0.8, 0.3, -4.45),
     wingElement(1.9, 0.3, 8.6, -20.8, 7.9, 0, -0.35),               // rear wing top flap
-    new THREE.SphereGeometry(1, 12, 8).scale(1.1, 0.55, 0.45).translate(3.4, 5.6, 4.6),   // mirror pods
-    new THREE.SphereGeometry(1, 12, 8).scale(1.1, 0.55, 0.45).translate(3.4, 5.6, -4.6)
+    new THREE.SphereGeometry(1, 12, 8).scale(0.8, 0.4, 0.34).translate(5.0, 5.6, 4.6),   // mirror pods
+    new THREE.SphereGeometry(1, 12, 8).scale(0.8, 0.4, 0.34).translate(5.0, 5.6, -4.6)
   ]);
 
   // Carbon fiber parts: floor, main wing planes, suspension arms, supports
@@ -222,7 +222,7 @@ function buildGeometry() {
     bar([-14, 3.4, -1.8], [r.x, r.r + 1.0, -r.z + 1.4], 0.17), bar([-19, 3.0, -1.2], [r.x, r.r + 1.0, -r.z + 1.4], 0.17),
     bar([-14, 1.7, -2.0], [r.x, r.r - 1.0, -r.z + 1.4], 0.17), bar([-19, 1.6, -1.2], [r.x, r.r - 1.0, -r.z + 1.4], 0.17),
     // mirror stalks
-    bar([2.6, 4.6, 2.6], [3.2, 5.5, 4.2], 0.14), bar([2.6, 4.6, -2.6], [3.2, 5.5, -4.2], 0.14),
+    bar([4.2, 4.3, 2.4], [4.9, 5.5, 4.2], 0.14), bar([4.2, 4.3, -2.4], [4.9, 5.5, -4.2], 0.14),
     // rear crash structure
     new THREE.CylinderGeometry(0.5, 0.8, 4, 10).rotateZ(Math.PI / 2).translate(-24, 1.9, 0)
   ]);
@@ -241,14 +241,14 @@ function buildGeometry() {
     new THREE.Vector3(0.6, 7.45, 0), new THREE.Vector3(2.2, 6.6, 0), new THREE.Vector3(3.6, 4.9, 0)
   ]);
   const halo = merge([
-    new THREE.TubeGeometry(haloCurve, 40, 0.38, 10, false),
-    new THREE.TubeGeometry(pillarCurve, 12, 0.34, 10, false)
+    new THREE.TubeGeometry(haloCurve, 40, 0.26, 10, false),
+    new THREE.TubeGeometry(pillarCurve, 12, 0.15, 8, false)
   ]);
 
   // Mirror glass (faces backwards). In step 3 these will show the cars behind.
   const mirrorGlass = merge([
-    new THREE.CircleGeometry(1, 16).scale(0.42, 0.5, 1).rotateY(-Math.PI / 2).translate(2.26, 5.6, 4.6),
-    new THREE.CircleGeometry(1, 16).scale(0.42, 0.5, 1).rotateY(-Math.PI / 2).translate(2.26, 5.6, -4.6)
+    new THREE.CircleGeometry(1, 16).scale(0.32, 0.37, 1).rotateY(-Math.PI / 2).translate(4.16, 5.6, 4.6),
+    new THREE.CircleGeometry(1, 16).scale(0.32, 0.37, 1).rotateY(-Math.PI / 2).translate(4.16, 5.6, -4.6)
   ]);
 
   // Racing tyre: a rounded rubber ring (made by spinning a side profile around the axle)
@@ -525,7 +525,8 @@ function sharedMaterials(quality) {
     rim: M(std ? { color: '#2c2e33', roughness: 0.3, metalness: 0.85 } : { color: '#3a3c42' }),
     visor: M(std ? { color: '#0a0a0c', roughness: 0.08, metalness: 0.6 } : { color: '#0a0a0c' }),
     mirror: M(std ? { color: '#7a8a99', roughness: 0.1, metalness: 0.9 } : { color: '#7a8a99' }),
-    rearLight: new THREE.MeshBasicMaterial({ color: '#ff2a1a' }),
+    // brighter than white on purpose, so the glow (bloom) effect makes it shine
+    rearLight: new THREE.MeshBasicMaterial({ color: new THREE.Color(5, 0.35, 0.2) }),
     sticker: M(std ? { map: stickerTex, transparent: true, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -2 }
                    : { map: stickerTex, transparent: true, polygonOffset: true, polygonOffsetFactor: -2 })
   };
@@ -576,7 +577,7 @@ export function buildCar({ colorHex, number, name, quality = 'medium' }) {
   add(GEO.rear.rim, S.rim);
   add(GEO.rearLight, S.rearLight).castShadow = false;
   const helmet = add(GEO.helmet, std ? new THREE.MeshStandardMaterial({ map: tex.helmet, roughness: 0.25, metalness: 0.1 }) : new THREE.MeshLambertMaterial({ map: tex.helmet }));
-  add(GEO.visor, S.visor);
+  const visor = add(GEO.visor, S.visor);
 
   // Front wheels are separate so they can turn when steering
   const F = WHEELS.front;
@@ -590,5 +591,144 @@ export function buildCar({ colorHex, number, name, quality = 'medium' }) {
     return w;
   });
 
-  return { group, frontWheels, helmet };
+  return { group, frontWheels, helmet, visor };
+}
+
+/* ---------------- Cockpit (only for my own car) ----------------
+   A modern steering wheel with a small screen (gear, speed, lap, position),
+   15 rev lights across the top (green, red, blue), colored buttons and
+   rotary knobs, held by the driver's gloves. The arms are in the car color.
+   Local directions of the wheel: x = right, y = up, z = towards the driver. */
+export function buildCockpit({ colorHex, quality = 'medium' }) {
+  const std = quality !== 'low';
+  const M = o => std ? new THREE.MeshStandardMaterial(o) : new THREE.MeshLambertMaterial({ color: o.color, map: o.map });
+  const carbon = sharedMaterials(quality).carbon;
+  const rubber = M({ color: '#1d1e22', roughness: 0.9 });
+
+  // Wheel body: a rounded plate with handles on both sides
+  const plate = new THREE.Shape();
+  const r = 0.22, x0 = -0.95, x1 = 0.95, y0 = -0.58, y1 = 0.55;
+  plate.moveTo(x0 + r, y0); plate.lineTo(x1 - r, y0); plate.quadraticCurveTo(x1, y0, x1, y0 + r);
+  plate.lineTo(x1, y1 - r); plate.quadraticCurveTo(x1, y1, x1 - r, y1);
+  plate.lineTo(x0 + r, y1); plate.quadraticCurveTo(x0, y1, x0, y1 - r);
+  plate.lineTo(x0, y0 + r); plate.quadraticCurveTo(x0, y0, x0 + r, y0);
+  const body = new THREE.ExtrudeGeometry(plate, { depth: 0.22, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 3 }).translate(0, 0, -0.22);
+
+  const inner = new THREE.Group();   // this part turns when steering
+  inner.add(new THREE.Mesh(body, carbon));
+  [-1, 1].forEach(s => {
+    const grip = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.95, 6, 10), rubber);
+    grip.position.set(s * 1.15, -0.02, -0.08);
+    grip.rotation.z = s * 0.12;
+    inner.add(grip);
+  });
+
+  // Screen (drawn on a small canvas and updated while driving)
+  const sc = document.createElement('canvas');
+  sc.width = 256; sc.height = 128;
+  const screenTex = new THREE.CanvasTexture(sc);
+  screenTex.colorSpace = THREE.SRGBColorSpace;
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.98, 0.49), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }));
+  screen.position.set(0, 0.02, 0.085);   // just in front of the wheel face
+  inner.add(screen);
+
+  // Rev lights: 5 green, 5 red, 5 blue
+  const revLights = [];
+  const revColors = ['#19ff4a', '#19ff4a', '#19ff4a', '#19ff4a', '#19ff4a', '#ff2a1a', '#ff2a1a', '#ff2a1a', '#ff2a1a', '#ff2a1a', '#3a66ff', '#3a66ff', '#3a66ff', '#3a66ff', '#3a66ff'];
+  const ledGeo = new THREE.SphereGeometry(0.045, 8, 6);
+  revColors.forEach((c, i) => {
+    const led = new THREE.Mesh(ledGeo, new THREE.MeshBasicMaterial({ color: '#202020', toneMapped: false }));
+    led.position.set(-0.7 + i * 0.1, 0.42, 0.08);
+    led.userData.on = new THREE.Color(c).multiplyScalar(3);   // extra bright so it glows
+    led.userData.off = new THREE.Color('#1c1c1c');
+    inner.add(led);
+    revLights.push(led);
+  });
+
+  // Buttons and rotary knobs
+  const btnColors = ['#ff3b30', '#ffcc00', '#34c759', '#0a84ff', '#ff9500', '#ffffff'];
+  const btnGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.05, 12).rotateX(Math.PI / 2);
+  [[-0.62, -0.18], [-0.62, -0.38], [0.62, -0.18], [0.62, -0.38], [-0.4, 0.3], [0.4, 0.3]].forEach(([x, y], i) => {
+    const b = new THREE.Mesh(btnGeo, new THREE.MeshBasicMaterial({ color: btnColors[i] }));
+    b.position.set(x, y, 0.07);
+    inner.add(b);
+  });
+  const knobGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.09, 14).rotateX(Math.PI / 2);
+  const knobMat = M({ color: '#5a5d63', metalness: 0.8, roughness: 0.3 });
+  [[-0.25, -0.42], [0, -0.45], [0.25, -0.42]].forEach(([x, y]) => {
+    const k = new THREE.Mesh(knobGeo, knobMat);
+    k.position.set(x, y, 0.08);
+    inner.add(k);
+  });
+  // Gear-shift paddles behind the wheel
+  [-1, 1].forEach(s => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.04), carbon);
+    p.position.set(s * 0.62, 0.1, -0.33);
+    inner.add(p);
+  });
+
+  // Gloves holding the handles, with arms going back towards the driver
+  const P = palette(colorHex);
+  const glove = M({ color: P.main, roughness: 0.75 });
+  const gloveDark = M({ color: '#18191c', roughness: 0.8 });
+  const suit = M({ color: P.main, roughness: 0.85 });
+  [-1, 1].forEach(s => {
+    const hand = new THREE.Group();
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10).scale(1, 1.25, 1.05), glove);
+    palm.position.set(0, 0, 0.12);
+    hand.add(palm);
+    for (let f = 0; f < 4; f++) {   // fingers wrapped round the front of the handle
+      const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.26, 4, 8), f % 2 ? glove : gloveDark);
+      finger.rotation.z = Math.PI / 2;
+      finger.position.set(-s * 0.12, 0.3 - f * 0.17, -0.12);
+      hand.add(finger);
+    }
+    const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.22, 4, 8), gloveDark);
+    thumb.position.set(-s * 0.2, 0.28, 0.05);
+    thumb.rotation.z = s * 0.9;
+    hand.add(thumb);
+    hand.position.set(s * 1.15, -0.02, 0);
+    inner.add(hand);
+    // forearm from the wrist back and down towards the driver
+    const wrist = new THREE.Vector3(s * 1.2, -0.25, 0.25), elbow = new THREE.Vector3(s * 1.55, -1.5, 2.6);
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, wrist.distanceTo(elbow), 6, 10), suit);
+    arm.position.copy(wrist).add(elbow).multiplyScalar(0.5);
+    arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), elbow.clone().sub(wrist).normalize());
+    inner.add(arm);
+  });
+
+  // The pivot holds the wheel in front of the driver
+  const pivot = new THREE.Group();
+  pivot.add(inner);
+  // steering column going forwards into the car
+  pivot.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.2, 8).rotateX(Math.PI / 2).translate(0, 0, -1.2), carbon));
+
+  const g = sc.getContext('2d');
+  let last = '';
+  function updateScreen(d) {
+    const key = [d.gear, d.speed, d.lap, d.laps, d.pos].join('|');
+    if (key === last) return;
+    last = key;
+    g.fillStyle = '#05070a'; g.fillRect(0, 0, 256, 128);
+    g.strokeStyle = '#2a2f38'; g.lineWidth = 2; g.strokeRect(2, 2, 252, 124);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#ffffff'; g.font = 'bold 76px "Russo One", Arial';
+    g.fillText(String(d.gear), 128, 66);
+    g.font = 'bold 26px Arial'; g.fillStyle = '#19ff4a';
+    g.fillText(String(d.speed), 46, 46);
+    g.font = '13px Arial'; g.fillStyle = '#9aa3b5'; g.fillText('KM/H', 46, 72);
+    g.font = 'bold 24px Arial'; g.fillStyle = '#ffcc00';
+    g.fillText('P' + d.pos, 210, 40);
+    g.font = 'bold 18px Arial'; g.fillStyle = '#ffffff';
+    g.fillText(Math.min(d.lap, d.laps) + '/' + d.laps, 210, 80);
+    g.font = '12px Arial'; g.fillStyle = '#9aa3b5'; g.fillText('LAP', 210, 102);
+    screenTex.needsUpdate = true;
+  }
+  function updateRevs(rpm) {
+    const lit = Math.max(0, Math.min(15, Math.round(((rpm - 0.55) / 0.42) * 15)));
+    const flash = rpm > 0.985 && (Math.floor(performance.now() / 80) % 2 === 0);
+    revLights.forEach((l, i) => l.material.color.copy(flash || i < lit ? l.userData.on : l.userData.off));
+  }
+
+  return { pivot, inner, updateScreen, updateRevs };
 }

@@ -26,32 +26,52 @@ const Hud = (() => {
   }
 
   /* ---------- Top-left info box ---------- */
-  function updateInfo({ lap, laps, pos, total, lapTime, best, speedKmh }) {
+  function updateInfo({ lap, laps, pos, total, lapTime, best, speedKmh, gear }) {
     $('hud-lap').textContent = `${Math.min(lap, laps)}/${laps}`;
     $('hud-pos').textContent = `${ordinal(pos)}/${total}`;
     $('hud-time').textContent = formatTime(lapTime);
     $('hud-best').textContent = formatTime(best);
     $('hud-speed').textContent = `${speedKmh} km/h`;
+    $('hud-gear').textContent = gear || 'N';
   }
 
-  /* ---------- Leaderboard (right side) ---------- */
-  // rows: [{ id, name, colorHex, lap, fin }], already sorted by position
-  function updateLeaderboard(rows, myId, laps) {
+  /* ---------- Live timing tower (right side, like F1 TV) ----------
+     rows: [{ id, name, colorHex, gap, fin }] in race order */
+  let towerRows = [];
+  function updateTower(rows, myId) {
     const box = $('leaderboard');
-    box.innerHTML = '';
-    rows.forEach((r, i) => {
+    // build the rows once, then just update their text (faster)
+    while (towerRows.length < rows.length) {
       const row = document.createElement('div');
-      row.className = 'lb-row' + (r.id === myId ? ' me' : '');
-      const info = r.fin ? 'FIN' : `L${Math.min(r.lap + 1, laps)}`;
-      row.innerHTML = `
-        <span class="lb-pos">${i + 1}</span>
-        <span class="lb-dot" style="background:${r.colorHex}"></span>
-        <span class="lb-name"></span>
-        <span class="lb-info ${r.fin ? 'fin' : ''}">${info}</span>`;
-      row.querySelector('.lb-name').textContent = r.name; // textContent = safe for any name
+      row.className = 'lb-row';
+      row.innerHTML = '<span class="lb-pos"></span><span class="lb-stripe"></span><span class="lb-name"></span><span class="lb-info"></span>';
       box.appendChild(row);
+      towerRows.push(row);
+    }
+    while (towerRows.length > rows.length) towerRows.pop().remove();
+    rows.forEach((r, i) => {
+      const el = towerRows[i];
+      el.classList.toggle('me', r.id === myId);
+      el.children[0].textContent = i + 1;
+      el.children[1].style.background = r.colorHex;
+      el.children[2].textContent = r.name;
+      el.children[3].textContent = r.gap;
+      el.children[3].className = 'lb-info' + (r.fin ? ' fin' : '');
     });
   }
+  function clearTower() { $('leaderboard').innerHTML = ''; towerRows = []; }
+
+  // Small banner when someone overtakes ("Ruchir overtakes Alex for P3")
+  function overtake(text, mine) {
+    const box = $('overtakes');
+    const el = document.createElement('div');
+    el.className = 'overtake' + (mine ? ' mine' : '');
+    el.textContent = text;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+    while (box.children.length > 3) box.firstChild.remove();
+  }
+
 
   /* ---------- Track drawing (used by mini-map and lobby previews) ---------- */
   function fitTrack(track, w, h, pad) {
@@ -193,6 +213,6 @@ const Hud = (() => {
     while (box.children.length > 4) box.firstChild.remove();
   }
 
-  return { formatTime, ordinal, updateInfo, updateLeaderboard, drawPreview, setupMinimap,
+  return { formatTime, ordinal, updateInfo, updateTower, clearTower, overtake, drawPreview, setupMinimap,
            drawMinimap, setLights, message, clearMessage, finishTimer, toast };
 })();

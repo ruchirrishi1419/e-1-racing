@@ -52,6 +52,7 @@ const Offline = (() => {
     events.raceStart({
       trackId: track.id,
       laps: race.laps,
+      timeOfDay: opts.timeOfDay || 'day',
       players: racers.map(p => ({ id: p.id, name: p.name, color: p.color, slot: p.race.slot }))
     });
 

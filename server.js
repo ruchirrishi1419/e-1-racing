@@ -142,6 +142,7 @@ function startRace(room) {
   io.to(room.code).emit('raceStart', {
     trackId: track.id,
     laps: room.race.laps,
+    timeOfDay: room.settings.timeOfDay,
     players: room.order.map(id => {
       const p = room.players.get(id);
       return { id, name: p.name, color: p.color, slot: p.race.slot };
@@ -249,7 +250,7 @@ io.on('connection', socket => {
     removePlayer(socket); // leave any old game first
     const room = {
       code: makeCode(), hostId: socket.id, players: new Map(), order: [],
-      settings: { trackId: 0, laps: 3 }, state: 'lobby', race: null, timers: []
+      settings: { trackId: 0, laps: 3, timeOfDay: 'day' }, state: 'lobby', race: null, timers: []
     };
     rooms.set(room.code, room);
     addPlayer(room, socket, data);
@@ -293,6 +294,8 @@ io.on('connection', socket => {
     const trackId = Number(data.trackId), laps = Number(data.laps);
     if (Number.isInteger(trackId) && trackId >= 0 && trackId < Tracks.list.length) room.settings.trackId = trackId;
     if (Number.isInteger(laps) && laps >= Rules.MIN_LAPS && laps <= Rules.MAX_LAPS) room.settings.laps = laps;
+    // Time of day: the host chooses, everyone in the race sees the same
+    if (['day', 'sunset', 'night'].includes(data.timeOfDay)) room.settings.timeOfDay = data.timeOfDay;
     sendLobby(room);
   });
 

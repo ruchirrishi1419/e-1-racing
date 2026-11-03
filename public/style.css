@@ -303,3 +303,35 @@ body.touch .lb-row:nth-child(n+6):not(.me) { display: none; }
 }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
 body.touch .toasts { bottom: auto; top: 70px; }
+
+/* ---------------- Settings on the main menu ---------------- */
+.settings { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+.setting > span { color: var(--muted); font-weight: 600; font-size: 14px; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { background: var(--panel-2); color: var(--text); border: none; padding: 8px 12px; font-weight: 700; font-family: var(--font); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.selected { background: var(--accent); }
+#set-volume { width: 150px; accent-color: var(--accent); }
+.tod-picker .lap-btn { width: auto; padding: 0 14px; font-size: 15px; }
+
+/* ---------------- Live timing tower (F1 TV style) ---------------- */
+.leaderboard { width: 230px; padding: 4px; background: rgba(8, 10, 16, 0.82); }
+.lb-row { gap: 6px; padding: 3px 6px; }
+.lb-stripe { width: 4px; height: 16px; border-radius: 2px; flex-shrink: 0; }
+.lb-info { font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
+.lb-row.me { background: rgba(255, 204, 0, 0.28); box-shadow: inset 3px 0 0 #ffcc00; }
+
+/* ---------------- Overtake banners ---------------- */
+.overtakes { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+.overtake {
+  background: linear-gradient(90deg, rgba(200, 23, 12, 0.92), rgba(120, 10, 6, 0.92));
+  color: #fff; font-weight: 800; padding: 6px 16px; border-radius: 6px; font-size: 15px;
+  border-left: 4px solid var(--accent-2); animation: toast-in 0.25s ease-out; white-space: nowrap;
+}
+.overtake.mine { background: linear-gradient(90deg, rgba(255, 204, 0, 0.95), rgba(255, 140, 0, 0.95)); color: #111; }
+
+/* ---------------- Helmet view: soft dark edges ---------------- */
+.visor { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 60%, transparent 62%, rgba(0, 0, 0, 0.55) 100%); }
+body.touch .overtakes { top: 120px; }

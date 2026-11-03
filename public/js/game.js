@@ -29,7 +29,31 @@ const Game = (() => {
   let me = { lap: 0, pos: 1, best: null, cur: null, curAt: 0, fin: false };
   let finishRemaining = null, finishAt = 0;
   let viewW = 0, viewH = 0, dpr = 1;
-  let use3D = false;            // true = draw with the 3D T-cam (render3d.js), false = old 2D view
+  let use3D = false;            // true = draw in 3D (render3d.js), false = old 2D view
+  let showRacingLine = true;    // the green/yellow/red driving assist
+  let raceTime = 0;             // seconds since this race screen started (for animations)
+  let lastOvertake = new Map(); // "A>B" -> time, so the same overtake isn't announced twice
+  let prevOrder = [];
+  let goTime = 0;
+
+  /* ---------------- Gearbox (8 gears) ----------------
+     Works out the gear and engine speed (RPM) from the car's speed.
+     Used for the steering wheel screen, the rev lights and the engine sound. */
+  const GEARS = 8;
+  const gearTop = n => Physics.TUNING.maxSpeed * (0.22 + 0.78 * Math.pow(n / GEARS, 0.9));
+  function makeGearbox() { return { gear: 1, rpm: 0.3, shifted: 0 }; }
+  function updateGearbox(gb, speed, throttle) {
+    gb.shifted = 0;
+    if (speed < -5) { gb.label = 'R'; gb.rpm = 0.3 + 0.5 * Math.min(1, -speed / Physics.TUNING.maxReverse); return gb; }
+    if (gb.gear < GEARS && speed > gearTop(gb.gear) * 0.97) { gb.gear++; gb.shifted = 1; }
+    else if (gb.gear > 1 && speed < gearTop(gb.gear - 1) * 0.8) { gb.gear--; gb.shifted = -1; }
+    const ratio = Math.max(0, speed) / gearTop(gb.gear);
+    const target = 0.3 + 0.7 * Math.min(1, ratio);
+    gb.rpm += (target - gb.rpm) * 0.35;
+    gb.label = Math.abs(speed) < 3 && !throttle ? 'N' : String(gb.gear);
+    return gb;
+  }
+  let gearbox = makeGearbox();
 
   /* ---------------- Starting and stopping ---------------- */
 
@@ -47,9 +71,16 @@ const Game = (() => {
       players.set(p.id, {
         id: p.id, name: p.name, colorHex: p.colorHex,
         x: g.x, y: g.y, a: g.angle, vx: 0, vy: 0, d: false,
-        buffer: [], lap: 0, pos: p.slot + 1, fin: false, lastRear: null
+        buffer: [], lap: 0, pos: p.slot + 1, fin: false, lastRear: null,
+        history: [], progress: 0, gearbox: makeGearbox(), speed: 0
       });
     });
+    gearbox = makeGearbox();
+    showRacingLine = opts.racingLine !== false;
+    raceTime = 0;
+    lastOvertake = new Map();
+    prevOrder = [];
+    goTime = 0;
     order = opts.players.slice().sort((a, b) => a.slot - b.slot).map(p => p.id);
 
     const mine = players.get(myId);
@@ -70,8 +101,9 @@ const Game = (() => {
     // Try the 3D view first. If this device can't do 3D, use the 2D view.
     use3D = !!(window.Render3D && Render3D.start({
       canvas: document.getElementById('game-3d'), track, myId,
-      players: opts.players, quality: opts.quality
+      players: opts.players, quality: opts.quality, timeOfDay: opts.timeOfDay
     }));
+    document.getElementById('visor').classList.toggle('hidden', !use3D);
     canvas.classList.toggle('off', use3D);
     document.getElementById('game-3d').classList.toggle('off', !use3D);
 
@@ -86,13 +118,20 @@ const Game = (() => {
     Sound.startEngine();
   }
 
-  function go() { locked = false; }
+  function go() { locked = false; goTime = performance.now(); }
 
   function stop() {
     running = false;
     cancelAnimationFrame(rafId);
     Sound.stopEngine();
+    Sound.stopWorld();
     if (use3D) Render3D.stop();
+  }
+
+  // Make the crowd cheer (overtakes, finishes)
+  function cheer(amount = 0.8) {
+    if (use3D) Render3D.cheer(amount);
+    Sound.cheer(amount);
   }
 
   // Start lights on the 3D gantry (the on-screen lights are handled by hud.js)
@@ -122,7 +161,68 @@ const Game = (() => {
     finishRemaining = state.remaining;
     finishAt = performance.now();
 
-    Hud.updateLeaderboard(order.map(id => players.get(id)), myId, laps);
+    // How far round the race each car is (laps + part of a lap), remembered over time
+    // so we can tell the gap in seconds to the car ahead
+    const now = performance.now();
+    state.players.forEach(sp => {
+      const p = players.get(sp.id);
+      if (!p) return;
+      const x = sp.id === myId ? myCar.x : sp.x, y = sp.id === myId ? myCar.y : sp.y;
+      const near = Tracks.nearest(track, x, y, p.trackHint);
+      let s = near.s;
+      p.trackHint = near.index;
+      if (sp.cp === 0 && s > 0.8) s -= 1;                         // still before the line
+      if (sp.cp >= track.checkpoints - 1 && s < 0.2) s += 1;      // crossed the line, lap not counted yet
+      p.progress = sp.lap + s;
+      p.history.push([p.progress, now]);
+      while (p.history.length > 2 && now - p.history[0][1] > 180000) p.history.shift();
+    });
+
+    // Timing tower rows: position, name, gap to the car ahead
+    const rows = order.map((id, i) => {
+      const p = players.get(id);
+      let gap = '';
+      if (p.fin) gap = 'FIN';
+      else if (i === 0) gap = 'LEADER';
+      else {
+        const ahead = players.get(order[i - 1]);
+        const t = timeAt(ahead, p.progress);
+        if (t !== null) gap = '+' + Math.max(0, (now - t) / 1000).toFixed(1) + 's';
+        else gap = '+' + Math.max(0, ahead.progress - p.progress).toFixed(1) + ' L';
+      }
+      return { id, name: p.name, colorHex: p.colorHex, gap, fin: p.fin };
+    });
+    Hud.updateTower(rows, myId);
+
+    // Overtakes: a car that was behind is now directly in front
+    if (goTime && now - goTime > 4000 && prevOrder.length) {
+      for (let i = 0; i < order.length - 1; i++) {
+        const a = order[i], b = order[i + 1];
+        const pa = players.get(a), pb = players.get(b);
+        if (pa.fin || pb.fin) continue;
+        if (prevOrder.indexOf(a) > prevOrder.indexOf(b) && prevOrder.indexOf(b) >= 0) {
+          const key = a + '>' + b, back = b + '>' + a;
+          if (now - (lastOvertake.get(key) || 0) > 5000 && now - (lastOvertake.get(back) || 0) > 3000) {
+            Hud.overtake(`${pa.name} overtakes ${pb.name} for P${i + 1}`, a === myId || b === myId);
+            cheer(a === myId ? 1 : 0.6);
+          }
+          lastOvertake.set(key, now);
+        }
+      }
+    }
+    prevOrder = order.slice();
+  }
+
+  // When was this car at a given race progress? (searching its history)
+  function timeAt(p, progress) {
+    const h = p.history;
+    for (let k = h.length - 1; k > 0; k--) {
+      if (h[k - 1][0] <= progress && h[k][0] >= progress) {
+        const t = (progress - h[k - 1][0]) / ((h[k][0] - h[k - 1][0]) || 1);
+        return h[k - 1][1] + (h[k][1] - h[k - 1][1]) * t;
+      }
+    }
+    return null;
   }
 
   function removePlayer(id) {
@@ -221,18 +321,47 @@ const Game = (() => {
     camera.y += (myCar.y + myCar.vy * 0.3 - camera.y) * k;
 
     const speedRatio = myCar.speed / Physics.TUNING.maxSpeed;
-    Sound.updateEngine(speedRatio, input.up, myCar.drifting);
+    raceTime += dt;
+
+    // Gearbox and engine sound
+    updateGearbox(gearbox, myCar.speed, input.up);
+    const onKerb = myCar.surface === 'road' && Math.abs((myCar.trackDist || 0) - track.halfWidth) < 12 && Math.abs(myCar.speed) > 80;
+    Sound.updateEngine({
+      rpm: gearbox.rpm, gear: gearbox.gear, shifted: gearbox.shifted, throttle: input.up && !locked,
+      speedRatio, drifting: myCar.drifting, onGrass: myCar.surface === 'grass', onKerb
+    });
+
+    // Other cars: estimate their speed and engine RPM, so they can be heard (louder when close)
+    const others = [];
+    players.forEach(p => {
+      if (p.id === myId) return;
+      const sp = Math.hypot(p.vx || 0, p.vy || 0);
+      p.speed = sp;
+      updateGearbox(p.gearbox, sp, true);
+      const dx = p.x - myCar.x, dy = p.y - myCar.y;
+      const dist = Math.hypot(dx, dy);
+      // left/right: + means the car is on my right
+      const pan = dist > 1 ? ((-Math.sin(myCar.angle) * dx + Math.cos(myCar.angle) * dy) / dist) : 0;
+      others.push({ id: p.id, dist, pan, rpm: p.gearbox.rpm, speed: sp });
+    });
+    Sound.updateOthers(others);
+    if (use3D) Sound.updateCrowd(Render3D.crowdLevel(myCar.x, myCar.y));
 
     if (use3D) {
       Render3D.frame({
-        dt,
+        dt, time: raceTime,
         me: {
-          x: myCar.x, y: myCar.y, a: myCar.angle, speedRatio,
+          x: myCar.x, y: myCar.y, a: myCar.angle, speed: myCar.speed, speedRatio,
           steer: (input.right ? 1 : 0) - (input.left ? 1 : 0),
           wallHit: strongestWall, bump: strongestBump,
-          onGrass: myCar.surface === 'grass' && Math.abs(myCar.speed) > 40
+          onGrass: myCar.surface === 'grass' && Math.abs(myCar.speed) > 40,
+          trackIndex: Math.max(0, myCar.hint), trackDist: myCar.trackDist || 0,
+          gear: gearbox.label, rpm: gearbox.rpm, kmh: Math.round(Math.abs(myCar.speed) * 0.6),
+          lap: me.lap + 1, laps, pos: me.pos, total: players.size
         },
-        cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a }))
+        cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a })),
+        leaderId: order[0],
+        racingLine: showRacingLine
       });
     } else {
       render(speedRatio);
@@ -247,7 +376,8 @@ const Game = (() => {
       pos: me.pos, total: players.size,
       lapTime: me.fin ? null : lapTime,
       best: me.best,
-      speedKmh: Math.round(Math.abs(myCar.speed) * 0.6)
+      speedKmh: Math.round(Math.abs(myCar.speed) * 0.6),
+      gear: gearbox.label
     });
     Hud.finishTimer(finishRemaining === null ? null : Math.max(0, finishRemaining - (now - finishAt)));
     Hud.drawMinimap([...players.values()].map(p => ({ x: p.x, y: p.y, colorHex: p.colorHex, me: p.id === myId })));
@@ -581,5 +711,5 @@ const Game = (() => {
     ctx.closePath();
   }
 
-  return { start, go, stop, onState, removePlayer, correct, setLights };
+  return { start, go, stop, onState, removePlayer, correct, setLights, cheer };
 })();

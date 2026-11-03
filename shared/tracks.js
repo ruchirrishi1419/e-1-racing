@@ -22,87 +22,113 @@
   'use strict';
 
   const SAMPLE_SPACING = 10; // distance (in pixels) between points on the final centre line
-  const WORLD_MARGIN = 450;  // empty space around the track at the edge of the world
+  const WORLD_MARGIN = 900;  // space around the track for grandstands, trees and buildings
 
   /* ---------------- Track designs ---------------- */
   // type 'spline'  = smooth flowing curves through the points
   // type 'corners' = straight lines with rounded corners of radius "radius"
   // type 'poly'    = points are already dense, use them as they are
+  // Every track is long like a real circuit (about 1:20 - 1:40 per lap at racing speed),
+  // with a long main straight, hairpins, chicanes (S-bends) and at least 10 corners.
+  //   scale      = makes the whole layout bigger or smaller
+  //   banked     = tilt the big fast corners (Oval)
+  //   elevation  = how much the road goes up and down hills (Mountain Pass)
+  //   hills      = how big the hills are in the background
+  //   theme.ground = which ground texture to use around the track
   const DEFINITIONS = [
     {
       name: 'Oval Speedway',
       difficulty: 'Easy',
-      description: 'A simple, fast oval. Perfect for learning.',
-      type: 'poly',
-      points: stadium(1400, 900, 1700, 520),
-      halfWidth: 78,
-      runoff: 95,
-      checkpoints: 8,
-      theme: { bg: '#2f6b2f', runoff: '#4f9a3a', road: '#3b3d42', decor: 'trees' }
+      description: 'A huge oval with two banked turns, a back-straight chicane and a twisty infield.',
+      type: 'spline',
+      scale: 1.75,
+      points: [
+        [2600, 0], [5000, 0], [7500, 0], [8300, 330], [8600, 1100], [8300, 1870], [7500, 2200],
+        [6600, 2200], [6200, 2200], [5900, 2020], [5600, 2200], [5000, 2200],
+        [4500, 2100], [4250, 1700], [4700, 1300], [4250, 850], [3600, 700], [3050, 1100],
+        [3450, 1550], [2950, 1800], [2400, 2200], [1500, 2200], [700, 1870], [400, 1100],
+        [700, 330], [1500, 0]
+      ],
+      halfWidth: 80,
+      runoff: 110,
+      banked: true,
+      elevation: 0,
+      hills: 70,
+      theme: { bg: '#3d6e33', runoff: '#4f9a3a', road: '#3b3d42', decor: 'trees', ground: 'grass' }
     },
     {
       name: 'City Circuit',
       difficulty: 'Medium',
-      description: 'Tight 90-degree street corners between buildings.',
+      description: 'A long street race with 18 tight corners between the city blocks.',
       type: 'corners',
-      radius: 75,
+      radius: 85,
+      scale: 1.2,
       points: [
-        [1500, 300], [2400, 300], [2400, 900], [1900, 900], [1900, 1500],
-        [2600, 1500], [2600, 2200], [1300, 2200], [1300, 1700], [800, 1700],
-        [800, 2200], [300, 2200], [300, 1100], [900, 1100], [900, 300]
+        [3200, 400], [7000, 400], [7000, 1500], [8000, 1500], [8000, 3000], [6600, 3000],
+        [6600, 2200], [5400, 2200], [5400, 3600], [4400, 3600], [4400, 2900], [3200, 2900],
+        [3200, 4200], [1600, 4200], [1600, 2600], [2400, 2600], [2400, 1600], [1200, 1600],
+        [1200, 400]
       ],
-      halfWidth: 58,
-      runoff: 62,
-      checkpoints: 10,
-      theme: { bg: '#4a4f57', runoff: '#8d939b', road: '#2e3035', decor: 'buildings' }
+      halfWidth: 60,
+      runoff: 55,
+      elevation: 0,
+      hills: 0,
+      theme: { bg: '#585d66', runoff: '#8d939b', road: '#2e3035', decor: 'buildings', ground: 'concrete' }
     },
     {
       name: 'Mountain Pass',
       difficulty: 'Medium',
-      description: 'Long winding S-curves through the forest.',
+      description: 'Long winding S-curves and switchbacks, climbing up and down the hills.',
       type: 'spline',
+      scale: 1.6,
       points: [
-        [1300, 300], [2100, 300], [2700, 450], [3000, 850], [2550, 1300],
-        [3000, 1750], [2550, 2200], [2850, 2700], [2300, 3000], [1750, 2650],
-        [1200, 3000], [650, 2700], [300, 2250], [650, 1750], [300, 1250],
-        [550, 700], [850, 380]
+        [2200, 500], [4800, 500], [6000, 700], [6800, 1300], [6200, 1900], [7000, 2500],
+        [6300, 3100], [7100, 3800], [6600, 4600], [5600, 4500], [5000, 3800], [4400, 4600],
+        [3600, 5000], [2800, 4500], [2000, 5000], [1200, 4600], [800, 3900], [1500, 3300],
+        [800, 2700], [1500, 2100], [900, 1500], [1200, 800]
       ],
-      halfWidth: 62,
+      halfWidth: 64,
       runoff: 85,
-      checkpoints: 12,
-      theme: { bg: '#1f4d2b', runoff: '#3f7f3a', road: '#3a3a3f', decor: 'pines' }
+      elevation: 110,
+      hills: 420,
+      theme: { bg: '#2c5a31', runoff: '#3f7f3a', road: '#3a3a3f', decor: 'pines', ground: 'rock' }
     },
     {
       name: 'Desert Loop',
       difficulty: 'Hard',
-      description: 'Long flat-out straights and tight hairpin turns.',
+      description: 'Enormous flat-out straights and huge braking zones into tight hairpins.',
       type: 'corners',
-      radius: 235,
+      radius: 240,
+      scale: 1.43,
       points: [
-        [1300, 300], [3700, 300], [3700, 800], [2000, 800], [2000, 1300],
-        [3700, 1300], [3700, 1800], [500, 1800], [500, 300]
+        [2000, 500], [9000, 500], [9000, 1100], [6000, 1100], [5400, 1700], [6200, 2300],
+        [9000, 2300], [9000, 2800], [3000, 2800], [2500, 2300], [3000, 1600], [1500, 1600],
+        [1500, 500]
       ],
-      halfWidth: 66,
-      runoff: 95,
-      checkpoints: 10,
-      theme: { bg: '#d9b778', runoff: '#e8cf98', road: '#4a4440', decor: 'cacti' }
+      halfWidth: 68,
+      runoff: 110,
+      elevation: 0,
+      hills: 110,
+      theme: { bg: '#d9b778', runoff: '#e8cf98', road: '#4a4440', decor: 'cacti', ground: 'sand' }
     },
     {
       name: 'Grand Prix',
       difficulty: 'Expert',
-      description: 'Long and technical. Every kind of corner. The ultimate test.',
+      description: 'The longest and most technical circuit: every kind of corner.',
       type: 'spline',
+      scale: 1.22,
       points: [
-        [1400, 300], [2600, 300], [3300, 350], [3700, 650], [3600, 1050],
-        [3150, 1150], [2900, 1450], [3300, 1800], [4000, 1900], [4200, 2400],
-        [3800, 2900], [3100, 3000], [2600, 2650], [2100, 3000], [1500, 3050],
-        [1000, 2700], [1200, 2250], [1700, 2050], [1500, 1600], [900, 1500],
-        [500, 1100], [400, 600], [800, 320]
+        [2500, 500], [6500, 500], [7300, 650], [7500, 1200], [7000, 1600], [7600, 2100],
+        [8600, 2000], [9300, 2500], [9100, 3300], [8300, 3500], [7900, 4200], [8600, 4900],
+        [8000, 5600], [7000, 5400], [6300, 4600], [5600, 5300], [4600, 5500], [3800, 5000],
+        [3200, 5500], [2200, 5400], [1600, 4700], [2200, 4000], [1500, 3300], [2300, 2700],
+        [3300, 2900], [4000, 2400], [3400, 1800], [2200, 1900], [1400, 1400], [1500, 800]
       ],
-      halfWidth: 58,
-      runoff: 85,
-      checkpoints: 14,
-      theme: { bg: '#2b5e2e', runoff: '#4c8f3c', road: '#35363b', decor: 'trees' }
+      halfWidth: 62,
+      runoff: 100,
+      elevation: 25,
+      hills: 160,
+      theme: { bg: '#2b5e2e', runoff: '#4c8f3c', road: '#35363b', decor: 'trees', ground: 'grass' }
     }
   ];
 
@@ -206,8 +232,9 @@
 
   function buildTrack(def, id) {
     let raw;
-    if (def.type === 'spline') raw = splineLoop(def.points);
-    else if (def.type === 'corners') raw = roundedLoop(def.points, def.radius);
+    const pts0 = def.points.map(p => [p[0] * (def.scale || 1), p[1] * (def.scale || 1)]);
+    if (def.type === 'spline') raw = splineLoop(pts0);
+    else if (def.type === 'corners') raw = roundedLoop(pts0, def.radius);
     else raw = def.points;
 
     let pts = resample(raw, SAMPLE_SPACING);
@@ -235,8 +262,12 @@
       description: def.description,
       halfWidth: def.halfWidth,
       runoff: def.runoff,
-      checkpoints: def.checkpoints,
+      // more checkpoints on longer tracks (about one every 1.8 km)
+      checkpoints: Math.max(10, Math.round(length / 1800)),
       theme: def.theme,
+      banked: !!def.banked,
+      elevation: def.elevation || 0,
+      hills: def.hills || 0,
       path,
       cum,
       length,

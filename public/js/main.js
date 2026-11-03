@@ -18,7 +18,8 @@
   let raceInfo = null;     // track + laps of the current race
 
   // Settings for Play Offline (remembered between races)
-  const offline = { trackId: 0, laps: 3, color: 'red', aiCount: 5 };
+  const offline = { trackId: 0, laps: 3, color: 'red', aiCount: 5, timeOfDay: 'day' };
+  const TIMES = [{ v: 'day', label: '☀️ Day' }, { v: 'sunset', label: '🌇 Sunset' }, { v: 'night', label: '🌙 Night' }];
 
   /* ---------------- Small helpers ---------------- */
 
@@ -51,6 +52,46 @@
   function graphicsQuality() {
     try { const saved = localStorage.getItem('e1-graphics'); if (saved) return saved; } catch (e) { /* ignore */ }
     return Input.isTouch ? 'low' : 'medium';
+  }
+  function getSetting(key, fallback) {
+    try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+  function setSetting(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* ignore */ } }
+
+  /* ---------------- Main menu settings: Graphics, Racing line, Volume ---------------- */
+  function renderSettings() {
+    const g = graphicsQuality(), line = getSetting('e1-line', 'on');
+    $('set-graphics').querySelectorAll('button').forEach(b => b.classList.toggle('selected', b.dataset.v === g));
+    $('set-line').querySelectorAll('button').forEach(b => b.classList.toggle('selected', b.dataset.v === line));
+  }
+  $('set-graphics').addEventListener('click', e => {
+    if (!e.target.dataset.v) return;
+    setSetting('e1-graphics', e.target.dataset.v); renderSettings();
+  });
+  $('set-line').addEventListener('click', e => {
+    if (!e.target.dataset.v) return;
+    setSetting('e1-line', e.target.dataset.v); renderSettings();
+  });
+  $('set-volume').value = getSetting('e1-volume', '70');
+  Sound.setVolume(Number($('set-volume').value) / 100);
+  $('set-volume').addEventListener('input', e => {
+    Sound.init();
+    Sound.setVolume(Number(e.target.value) / 100);
+    setSetting('e1-volume', e.target.value);
+  });
+  renderSettings();
+
+  // A row of buttons for a list of choices, e.g. Day / Sunset / Night
+  function choicePicker(box, choices, selected, disabled, onPick) {
+    box.innerHTML = '';
+    choices.forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'lap-btn' + (c.v === selected ? ' selected' : '');
+      b.textContent = c.label;
+      b.disabled = disabled;
+      b.addEventListener('click', () => onPick(c.v));
+      box.appendChild(b);
+    });
   }
 
   /* ---------------- Reusable pickers (tracks, numbers, colors) ---------------- */
@@ -214,6 +255,8 @@
       n => { offline.aiCount = n; saveOffline(); renderOffline(); });
     colorPicker($('offline-colors'), offline.color, {},
       c => { offline.color = c; saveOffline(); renderOffline(); });
+    choicePicker($('offline-tod'), TIMES, offline.timeOfDay, false,
+      v => { offline.timeOfDay = v; saveOffline(); renderOffline(); });
   }
 
   $('btn-offline-back').addEventListener('click', () => show('home'));
@@ -221,7 +264,7 @@
     Sound.init();
     mode = 'offline';
     Offline.start({ name: getName(false), color: offline.color, trackId: offline.trackId,
-                    laps: offline.laps, aiCount: offline.aiCount }, RaceEvents);
+                    laps: offline.laps, aiCount: offline.aiCount, timeOfDay: offline.timeOfDay }, RaceEvents);
   });
 
   /* ---------------- Online lobby ---------------- */
@@ -279,6 +322,8 @@
     updateTrackCards($('track-picker'), lobby.settings.trackId, !isHost);
     numberPicker($('lap-picker'), RaceRules.MIN_LAPS, RaceRules.MAX_LAPS, lobby.settings.laps, !isHost,
       n => socket.emit('updateSettings', { trackId: lobby.settings.trackId, laps: n }));
+    choicePicker($('tod-picker'), TIMES, lobby.settings.timeOfDay || 'day', !isHost,
+      v => socket.emit('updateSettings', { trackId: lobby.settings.trackId, laps: lobby.settings.laps, timeOfDay: v }));
 
     $('settings-note').textContent = isHost ? '' : 'Only the host can change these';
     $('btn-start').classList.toggle('hidden', !isHost);
@@ -298,6 +343,7 @@
       raceInfo = data;
       show('race');
       Hud.setLights(0);
+      Hud.clearTower();
       Hud.message(Tracks.get(data.trackId).name, `${data.laps} laps`, 900);
       Game.start({
         trackId: data.trackId,
@@ -308,7 +354,9 @@
           ? state => Offline.onCarState(state)
           : state => socket.volatile.emit('carState', state),
         serverNow: mode === 'offline' ? () => Date.now() : serverNow,
-        quality: graphicsQuality()
+        quality: graphicsQuality(),
+        timeOfDay: data.timeOfDay || 'day',
+        racingLine: getSetting('e1-line', 'on') === 'on'
       });
     },
 
@@ -347,6 +395,7 @@
       } else {
         Hud.message('WINNER!', `${d.name} wins! You have ${d.graceMs / 1000}s to finish`, 3000);
       }
+      Game.cheer(1.2);
     },
 
     playerFinished(d) {
@@ -356,6 +405,7 @@
         Hud.message(`${Hud.ordinal(d.place)} PLACE`, `Finished in ${Hud.formatTime(d.time)}`, 3000);
       } else {
         Hud.toast(`${d.name} finished ${Hud.ordinal(d.place)}`);
+        Game.cheer(0.6);
       }
     },
 

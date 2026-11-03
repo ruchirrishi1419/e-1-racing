@@ -113,6 +113,7 @@
       }
     }
     car.surface = near.dist <= track.halfWidth ? 'road' : 'grass';
+    car.trackDist = near.dist;   // distance from the centre line (used to feel the kerbs)
   }
 
   // Light bump between my car and another car (only "my" car is moved,
