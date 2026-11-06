@@ -15,6 +15,7 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 const SKIES = {
   day: 'kloofendal_48d_partly_cloudy_puresky',
+  clear: 'kloofendal_43d_clear_puresky',
   sunset: 'qwantani_sunset_puresky',
   night: 'qwantani_night_puresky'
 };
@@ -67,15 +68,32 @@ function analyseSky(texture, maxValue) {
 // Preload the day sky as soon as the game page opens (the default time of day)
 loadSky(SKIES.day, 16).catch(() => {});
 
-/* opts: { scene, renderer, quality, timeOfDay, floodlights, nightMaterials, fogFar } */
+/* Sky / weather presets (visual only - grip never changes):
+   clear    = hard sun, clear blue sky
+   clouds   = scattered clouds (default)
+   overcast = grey sky, soft flat light, muted colours, closer haze
+   rain     = like overcast but darker, with rain streaks falling past the camera */
+const WEATHER = ['clear', 'clouds', 'overcast', 'rain'];
+
+/* opts: { scene, renderer, quality, timeOfDay, weather, floodlights, nightMaterials, fogFar } */
 export function setupEnvironment(opts) {
   const { scene, renderer, quality } = opts;
   const tod = PRESETS[opts.timeOfDay] ? opts.timeOfDay : 'day';
-  const P = PRESETS[tod];
+  const P = { ...PRESETS[tod] };
   const night = tod === 'night';
+  const weather = WEATHER.includes(opts.weather) ? opts.weather : 'clouds';
+  const grey = weather === 'overcast' || weather === 'rain';
+  if (weather === 'clear' && !night) { P.sun *= 1.15; P.hemi *= 0.9; }
+  if (grey) {
+    // flat grey light: weak sun, stronger soft sky light, grey haze closer in
+    P.sun *= weather === 'rain' ? 0.18 : 0.3;
+    P.hemi *= 1.6; P.hemiSky = night ? '#8a93a6' : '#c7ccd3'; P.hemiGround = '#4a4f55';
+    P.fallbackFog = night ? '#0d1118' : weather === 'rain' ? '#7d858f' : '#9aa1aa';
+    P.exposure *= weather === 'rain' ? 0.85 : 0.92;
+  }
 
   // Fog makes far-away things fade into the sky (also hides where the world ends)
-  scene.fog = new THREE.Fog(P.fallbackFog, opts.fogFar * 0.25, opts.fogFar);
+  scene.fog = new THREE.Fog(P.fallbackFog, opts.fogFar * (grey ? 0.12 : 0.25), opts.fogFar * (grey ? 0.75 : 1));
   scene.background = new THREE.Color(P.fallbackFog);
   renderer.toneMappingExposure = P.exposure;
 
@@ -132,7 +150,35 @@ export function setupEnvironment(opts) {
 
   // Load the sky photo (it may take a second the first time)
   let fogTarget = null;
-  loadSky(SKIES[tod], { day: 16, sunset: 8, night: 2 }[tod]).then(sky => {
+  // Grey weather in the day/sunset: no sky photo, just a grey cloudy dome
+  if (grey && !night) {
+    const c1 = new THREE.Color(weather === 'rain' ? '#5d646d' : '#7f8792'), c2 = new THREE.Color(P.fallbackFog);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(opts.fogFar * 1.4, 24, 12), new THREE.ShaderMaterial({
+      uniforms: { top: { value: c1 }, bottom: { value: c2 } }, side: THREE.BackSide, depthWrite: false, fog: false,
+      vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ gl_FragColor = vec4(mix(bottom, top, clamp(vP.y * 2.0, 0.0, 1.0)), 1.0); }'
+    }));
+    dome.userData.followCamera = true;
+    dome.renderOrder = -1;
+    scene.add(dome);
+  }
+  // Rain streaks: short lines that fall past the camera
+  let rain = null;
+  if (weather === 'rain') {
+    const N = quality === 'low' ? 900 : 1800, pos = new Float32Array(N * 6);
+    for (let i = 0; i < N; i++) {
+      const x = (Math.random() - 0.5) * 500, y = Math.random() * 160, z = (Math.random() - 0.5) * 500;
+      pos.set([x, y, z, x - 0.6, y - 7, z], i * 6);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#c8d2e0', transparent: true, opacity: 0.45, fog: false }));
+    rain.frustumCulled = false;
+    rain.userData.fall = 0;
+    scene.add(rain);
+  }
+
+  if (!(grey && !night)) loadSky(SKIES[weather === 'clear' && tod === 'day' ? 'clear' : tod], { day: 16, sunset: 8, night: 2 }[tod]).then(sky => {
     scene.background = sky.texture;
     scene.backgroundIntensity = P.bg;
     // reflections from the sky photo (done once, then cached on the texture)
@@ -152,6 +198,17 @@ export function setupEnvironment(opts) {
 
   // Every frame: the sun's shadows follow the area around my car; moon/stars follow the camera
   function update(camera, focusX, focusY, focusH) {
+    if (rain) {
+      // every streak falls on its own and starts again at the top when it reaches the bottom;
+      // the whole box of rain moves with the camera
+      const p = rain.geometry.attributes.position.array;
+      for (let i = 0; i < p.length; i += 6) {
+        p[i + 1] -= 9; p[i + 4] -= 9;
+        if (p[i + 1] < 0) { p[i + 1] += 160; p[i + 4] += 160; }
+      }
+      rain.geometry.attributes.position.needsUpdate = true;
+      rain.position.set(camera.position.x, camera.position.y - 60, camera.position.z);
+    }
     sun.position.set(focusX + sunDir.x * 1200, focusH + sunDir.y * 1200, focusY + sunDir.z * 1200);
     sun.target.position.set(focusX, focusH, focusY);
     scene.children.forEach(o => {
@@ -167,5 +224,5 @@ export function setupEnvironment(opts) {
     }
   }
 
-  return { update, sun, night, timeOfDay: tod, bloomStrength: night ? 0.5 : tod === 'sunset' ? 0.35 : 0.25 };
+  return { update, sun, night, weather, timeOfDay: tod, bloomStrength: night ? 0.5 : tod === 'sunset' ? 0.35 : 0.25 };
 }

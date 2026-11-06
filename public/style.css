@@ -379,3 +379,86 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-bottom-w
 .rotate-phone { font-size: 72px; animation: rotate-hint 2s ease-in-out infinite; }
 @keyframes rotate-hint { 0%, 25% { transform: rotate(0deg); } 60%, 100% { transform: rotate(-90deg); } }
 @media (orientation: portrait) and (pointer: coarse) { .rotate-overlay { display: flex; } }
+
+/* =====================================================================
+   Race HUD - E1 Graphics Bible layout (artboard 1)
+   Dark see-through panels, white text, small colored accents, Chakra Petch.
+   ===================================================================== */
+.t-tower, .t-times, .t-speedo { font-family: 'Chakra Petch', var(--font); pointer-events: none; color: #fff; }
+.t-tower { position: absolute; top: 12px; left: 12px; width: 220px; background: rgba(10, 14, 26, 0.78);
+  border-radius: 8px; overflow: hidden; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+.t-head { display: flex; justify-content: space-between; align-items: center; background: #1b4fd6;
+  padding: 5px 10px; font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
+.t-rows .lb-row { display: flex; align-items: center; gap: 8px; padding: 3px 10px; font-size: 13px; font-weight: 600;
+  border-radius: 0; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.t-rows .lb-pos { width: 18px; font-family: 'Chakra Petch', var(--font); text-align: left; font-weight: 700; }
+.t-rows .lb-stripe { width: 3px; height: 14px; border-radius: 1px; }
+.t-rows .lb-name { flex: 1; letter-spacing: 0.5px; }
+.t-rows .lb-info { color: #c9d1e3; font-size: 12px; min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+.t-rows .lb-row.me { background: rgba(27, 79, 214, 0.55); box-shadow: inset 3px 0 0 #fff; }
+
+.t-times { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.t-laptime { background: rgba(10, 14, 26, 0.82); border-radius: 8px; padding: 6px 14px; font-size: 28px; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+.t-chip { background: rgba(10, 14, 26, 0.78); border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; color: #c9d1e3; }
+.t-chip b { color: #fff; font-variant-numeric: tabular-nums; }
+.t-chip b.purple { color: #c77dff; }
+
+.t-speedo { position: absolute; right: 12px; bottom: 12px; width: 300px; background: rgba(10, 14, 26, 0.82);
+  border-radius: 10px; padding: 10px 14px 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+.t-revs { display: flex; gap: 4px; margin-bottom: 4px; }
+.t-revs i { flex: 1; height: 7px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); }
+.t-revs i.g.on { background: #19e24a; box-shadow: 0 0 6px #19e24a; }
+.t-revs i.r.on { background: #ff2a1a; box-shadow: 0 0 6px #ff2a1a; }
+.t-revs i.b.on { background: #3a7bff; box-shadow: 0 0 6px #3a7bff; }
+.t-speed-row { display: flex; justify-content: space-between; align-items: flex-end; }
+.t-speed { font-size: 52px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.t-unit { font-size: 13px; font-weight: 600; color: #c9d1e3; margin-left: 6px; }
+.t-gear-box { display: flex; flex-direction: column; align-items: flex-end; }
+.t-gear-label { font-size: 11px; color: #c9d1e3; font-weight: 600; letter-spacing: 1px; }
+.t-gear { font-size: 46px; font-weight: 700; line-height: 1; color: #ffd21f; }
+.t-drs-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.t-drs { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; color: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2); }
+.t-drs.zone { color: #19e24a; border-color: #19e24a; }
+.t-drs.open { color: #08140b; background: #19e24a; border-color: #19e24a; box-shadow: 0 0 10px #19e24a; }
+.t-pos { font-size: 15px; font-weight: 700; }
+
+/* mini-map bottom-left, same panel style */
+.minimap { left: 12px; bottom: 12px; width: 190px; height: 150px; background: rgba(10, 14, 26, 0.72); border: none; border-radius: 10px; }
+
+/* overtake banners: under the top buttons, between the tower and the times */
+.overtakes { top: 64px; }
+
+/* speed streaks at the screen edges and a soft vignette */
+.speed-lines { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(255, 255, 255, 0.10) 0deg 0.6deg, transparent 0.6deg 7deg);
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 52%, transparent 55%, #000 100%);
+          mask-image: radial-gradient(ellipse 60% 55% at 50% 52%, transparent 55%, #000 100%);
+  animation: speed-spin 0.35s linear infinite; }
+@keyframes speed-spin { from { transform: rotate(0deg); } to { transform: rotate(7deg); } }
+.vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 80% 75% at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.35) 100%); }
+
+/* ---- Phones: keep the touch buttons clear ---- */
+body.touch .t-tower { width: 150px; top: 8px; left: 8px; }
+body.touch .t-head { font-size: 11px; padding: 3px 8px; }
+body.touch .t-rows .lb-row { font-size: 10px; padding: 1px 8px; gap: 5px; }
+body.touch .t-rows .lb-info { font-size: 9px; min-width: 40px; }
+body.touch .t-rows .lb-row:nth-child(n+6):not(.me) { display: none; }
+body.touch .t-times { top: 8px; right: 8px; gap: 3px; }
+body.touch .t-laptime { font-size: 17px; padding: 3px 9px; }
+body.touch .t-chip { font-size: 10px; padding: 2px 7px; }
+body.touch .minimap { left: auto; right: 8px; top: 86px; bottom: auto; width: 110px; height: 84px; }
+body.touch .t-speedo { right: 50%; transform: translateX(50%); bottom: 8px; width: 210px; padding: 6px 10px; }
+body.touch .t-speed { font-size: 32px; }
+body.touch .t-gear { font-size: 30px; }
+body.touch .t-revs i { height: 5px; }
+body.touch .overtakes { top: 52px; }
+.fps { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); font: 700 12px 'Chakra Petch', monospace;
+  color: #19e24a; background: rgba(0, 0, 0, 0.6); padding: 2px 8px; border-radius: 4px; pointer-events: none; }
+body.touch .fps { bottom: auto; top: 92px; }
+body.touch .t-speedo { width: 180px; padding: 4px 9px; background: rgba(10, 14, 26, 0.6); }
+body.touch .t-speed { font-size: 26px; }
+body.touch .t-gear { font-size: 24px; }
+body.touch .t-drs-row { margin-top: 2px; }

@@ -13,6 +13,10 @@ const Game = (() => {
   const ctx = canvas.getContext('2d');
 
   const rearLabel = document.getElementById('rear-label');
+  const DEBUG = /[?&]debug=1/.test(location.search);
+  const fpsEl = document.getElementById('fps');
+  if (DEBUG) fpsEl.classList.remove('hidden');
+  let fpsN = 0, fpsT = 0;
   const STEP = 1 / 60;          // physics runs in fixed steps of 1/60 second
   const SEND_EVERY = 0.05;      // send my position every 0.05 s (20 times a second)
   const INTERP_DELAY = 150;     // show other cars 150 ms "in the past" so they move smoothly
@@ -36,8 +40,9 @@ const Game = (() => {
   let lastOvertake = new Map(); // "A>B" -> time, so the same overtake isn't announced twice
   let prevOrder = [];
   let goTime = 0;
-  // Camera view: 'tcam' (default) or 'cockpit' - remembered on this device
-  let view = (() => { try { const v = localStorage.getItem('e1-view'); return v === 'cockpit' ? 'cockpit' : 'tcam'; } catch (e) { return 'tcam'; } })();
+  let drsZone = false;
+  // Camera view: 'tcam' (default), 'chase' or 'cockpit' - remembered on this device
+  let view = (() => { try { const v = localStorage.getItem('e1-view'); return ['cockpit', 'chase'].includes(v) ? v : 'tcam'; } catch (e) { return 'tcam'; } })();
   function nextView() {
     if (!window.Render3D) return;
     const list = Render3D.viewNames();
@@ -120,7 +125,7 @@ const Game = (() => {
     // Try the 3D view first. If this device can't do 3D, use the 2D view.
     use3D = !!(window.Render3D && Render3D.start({
       canvas: document.getElementById('game-3d'), track, myId,
-      players: opts.players, quality: opts.quality, timeOfDay: opts.timeOfDay
+      players: opts.players, quality: opts.quality, timeOfDay: opts.timeOfDay, weather: opts.weather
     }));
     document.getElementById('visor').classList.add('hidden');   // only used by the cockpit view
     canvas.classList.toggle('off', use3D);
@@ -207,9 +212,11 @@ const Game = (() => {
       else {
         const ahead = players.get(order[i - 1]);
         const t = timeAt(ahead, p.progress);
-        if (t !== null) gap = '+' + Math.max(0, (now - t) / 1000).toFixed(1) + 's';
+        if (t !== null) gap = '+' + Math.max(0, (now - t) / 1000).toFixed(3);
         else gap = '+' + Math.max(0, ahead.progress - p.progress).toFixed(1) + ' L';
+        if (id === myId) me.gapAhead = t !== null ? Math.max(0, (now - t) / 1000) : null;
       }
+      if (i === 0 && id === myId) me.gapAhead = null;
       return { id, name: p.name, colorHex: p.colorHex, gap, fin: p.fin };
     });
     Hud.updateTower(rows, myId);
@@ -346,6 +353,13 @@ const Game = (() => {
     const speedRatio = myCar.speed / Physics.TUNING.maxSpeed;
     raceTime += dt;
 
+    // DRS: on a long straight AND less than 1 second behind the car ahead
+    const line = RacingLine.get(track), li = RacingLine.indexFor(line, Math.max(0, myCar.hint));
+    let onStraight = true;
+    for (let k = 0; k < 14; k++) if (line.speed[(li + k) % line.n] < Physics.TUNING.maxSpeed * 0.97) { onStraight = false; break; }
+    drsZone = onStraight;
+    myCar.drs = !locked && onStraight && me.gapAhead !== null && me.gapAhead !== undefined && me.gapAhead < 1.0 && !input.down;
+
     // Gearbox and engine sound
     updateGearbox(gearbox, myCar.speed, input.up);
     const onKerb = myCar.surface === 'road' && Math.abs((myCar.trackDist || 0) - track.halfWidth) < 12 && Math.abs(myCar.speed) > 80;
@@ -359,6 +373,8 @@ const Game = (() => {
     players.forEach(p => {
       if (p.id === myId) return;
       const sp = Math.hypot(p.vx || 0, p.vy || 0);
+      p.decel = (p.decel || 0) * 0.85 + ((p.speed || sp) - sp) / Math.max(dt, 0.001) * 0.15;
+      p.braking = p.decel > 120 && sp > 40;
       p.speed = sp;
       updateGearbox(p.gearbox, sp, true);
       const dx = p.x - myCar.x, dy = p.y - myCar.y;
@@ -380,9 +396,11 @@ const Game = (() => {
           onGrass: myCar.surface === 'grass' && Math.abs(myCar.speed) > 40,
           trackIndex: Math.max(0, myCar.hint), trackDist: myCar.trackDist || 0,
           gear: gearbox.label, rpm: gearbox.rpm, kmh: Math.round(Math.abs(myCar.speed) * 0.6),
-          lap: me.lap + 1, laps, pos: me.pos, total: players.size
+          lap: me.lap + 1, laps, pos: me.pos, total: players.size,
+          brake: input.brake !== undefined ? input.brake : (input.down ? 1 : 0), drifting: myCar.drifting
         },
-        cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a })),
+        cars: [...players.values()].map(p => ({ id: p.id, x: p.x, y: p.y, a: p.a,
+          braking: p.id === myId ? (input.down && myCar.speed > 20) : !!p.braking })),
         leaderId: order[0],
         lookBack: controls.lookBack,
         view,
@@ -393,6 +411,11 @@ const Game = (() => {
     }
     updateHud(now);
     rearLabel.classList.toggle('hidden', !controls.lookBack);
+    // FPS counter (debug mode: add ?debug=1 to the link)
+    if (DEBUG) {
+      fpsN++; fpsT += dt;
+      if (fpsT >= 0.5) { fpsEl.textContent = 'FPS ' + Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
+    }
   }
 
   function updateHud(now) {
@@ -403,7 +426,10 @@ const Game = (() => {
       lapTime: me.fin ? null : lapTime,
       best: me.best,
       speedKmh: Math.round(Math.abs(myCar.speed) * 0.6),
-      gear: gearbox.label
+      gear: gearbox.label,
+      rpm: gearbox.rpm,
+      gapAhead: me.gapAhead, drs: !!myCar.drs, drsZone,
+      speedRatio: Math.max(0, myCar.speed) / Physics.TUNING.maxSpeed
     });
     Hud.finishTimer(finishRemaining === null ? null : Math.max(0, finishRemaining - (now - finishAt)));
     Hud.drawMinimap([...players.values()].map(p => ({ x: p.x, y: p.y, colorHex: p.colorHex, me: p.id === myId })));

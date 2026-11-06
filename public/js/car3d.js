@@ -273,13 +273,15 @@ function buildGeometry() {
   const rim = (R, W) => merge([
     new THREE.CylinderGeometry(R * 0.62, R * 0.62, W * 0.9, 24, 1, true).rotateX(Math.PI / 2),
     new THREE.CircleGeometry(R * 0.62, 24).translate(0, 0, W * 0.42),
-    new THREE.CircleGeometry(R * 0.62, 24).rotateY(Math.PI).translate(0, 0, -W * 0.42)
+    new THREE.CircleGeometry(R * 0.62, 24).rotateY(Math.PI).translate(0, 0, -W * 0.42),
+    // spokes, so you can see the wheels spin
+    ...[0, 1, 2, 3, 4].flatMap(k => [1, -1].map(s => new THREE.BoxGeometry(R * 1.1, R * 0.12, 0.08).rotateZ(k * Math.PI / 5).translate(0, 0, s * (W * 0.42 + 0.05))))
   ]);
   const wheelParts = (R, W) => ({ tyre: tyre(R, W), stripe: stripe(R, W), rim: rim(R, W) });
 
   // Rear wheels are merged into one piece each (they never steer)
   const rw = wheelParts(r.r, r.w);
-  const rearAt = (g, z) => g.clone().translate(r.x, r.r, z);
+  const rearAt = (g, z) => g.clone().translate(0, 0, z);   // around the rear axle (so they can spin)
   const rear = {
     tyre: merge([rearAt(rw.tyre, r.z), rearAt(rw.tyre, -r.z)]),
     stripe: merge([rearAt(rw.stripe, r.z), rearAt(rw.stripe, -r.z)]),
@@ -534,7 +536,7 @@ function sharedMaterials(quality) {
     quality,
     carbon: M(std ? { map: carbonTex, roughness: 0.38, metalness: 0.25 } : { map: carbonTex }),
     tyre: M(std ? { color: '#151515', roughness: 0.92, metalness: 0 } : { color: '#151515' }),
-    stripe: M(std ? { color: '#ffd21f', roughness: 0.7 } : { color: '#ffd21f' }),
+    stripe: M(std ? { color: '#e10600', roughness: 0.7 } : { color: '#e10600' }),   // red-wall racing tyres
     rim: M(std ? { color: '#2c2e33', roughness: 0.3, metalness: 0.85 } : { color: '#3a3c42' }),
     visor: M(std ? { color: '#0a0a0c', roughness: 0.08, metalness: 0.6 } : { color: '#0a0a0c' }),
     mirror: M(std ? { color: '#7a8a99', roughness: 0.1, metalness: 0.9 } : { color: '#7a8a99' }),
@@ -585,26 +587,35 @@ export function buildCar({ colorHex, number, name, quality = 'medium' }) {
   add(GEO.halo, std ? new THREE.MeshStandardMaterial({ map: tex.halo, roughness: 0.35, metalness: 0.3 }) : new THREE.MeshLambertMaterial({ map: tex.halo }));
   add(GEO.mirrorGlass, S.mirror);
   add(GEO.stickers, S.sticker).castShadow = false;
-  add(GEO.rear.tyre, S.tyre);
-  add(GEO.rear.stripe, S.stripe);
-  add(GEO.rear.rim, S.rim);
-  add(GEO.rearLight, S.rearLight).castShadow = false;
+  // rear wheels on their axle (spin with speed)
+  const rearAxle = new THREE.Group();
+  rearAxle.position.set(WHEELS.rear.x, WHEELS.rear.r, 0);
+  add(GEO.rear.tyre, S.tyre, rearAxle);
+  add(GEO.rear.stripe, S.stripe, rearAxle);
+  add(GEO.rear.rim, S.rim, rearAxle);
+  group.add(rearAxle);
+  // rain light: its own material per car, so it can blink when that car brakes
+  const rearLight = add(GEO.rearLight, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 0.08, 0.05) }));
+  rearLight.castShadow = false;
   const helmet = add(GEO.helmet, std ? new THREE.MeshStandardMaterial({ map: tex.helmet, roughness: 0.25, metalness: 0.1 }) : new THREE.MeshLambertMaterial({ map: tex.helmet }));
   const visor = add(GEO.visor, S.visor);
 
   // Front wheels are separate so they can turn when steering
   const F = WHEELS.front;
   const frontWheels = [F.z, -F.z].map(z => {
-    const w = new THREE.Group();
+    const w = new THREE.Group();          // turns left/right when steering
     w.position.set(F.x, F.r, z);
-    add(GEO.front.tyre, S.tyre, w);
-    add(GEO.front.stripe, S.stripe, w);
-    add(GEO.front.rim, S.rim, w);
+    const spin = new THREE.Group();       // rolls with speed
+    add(GEO.front.tyre, S.tyre, spin);
+    add(GEO.front.stripe, S.stripe, spin);
+    add(GEO.front.rim, S.rim, spin);
+    w.add(spin);
+    w.userData.spin = spin;
     group.add(w);
     return w;
   });
 
-  return { group, frontWheels, helmet, visor };
+  return { group, frontWheels, helmet, visor, rearAxle, rearLight };
 }
 
 /* ---------------- Cockpit (only for my own car) ----------------

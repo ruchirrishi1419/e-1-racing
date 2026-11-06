@@ -26,13 +26,44 @@ const Hud = (() => {
   }
 
   /* ---------- Top-left info box ---------- */
-  function updateInfo({ lap, laps, pos, total, lapTime, best, speedKmh, gear }) {
-    $('hud-lap').textContent = `${Math.min(lap, laps)}/${laps}`;
-    $('hud-pos').textContent = `${ordinal(pos)}/${total}`;
-    $('hud-time').textContent = formatTime(lapTime);
-    $('hud-best').textContent = formatTime(best);
-    $('hud-speed').textContent = `${speedKmh} km/h`;
-    $('hud-gear').textContent = gear || 'N';
+  // 15 rev lights: 5 green, 5 red, 5 blue (built once)
+  let revEls = null;
+  function revLights(rpm) {
+    if (!revEls) {
+      const box = $('hud-revs');
+      box.innerHTML = '';
+      revEls = [];
+      for (let i = 0; i < 15; i++) {
+        const d = document.createElement('i');
+        d.className = i < 5 ? 'g' : i < 10 ? 'r' : 'b';
+        box.appendChild(d);
+        revEls.push(d);
+      }
+    }
+    const lit = Math.max(0, Math.min(15, Math.round(((rpm - 0.55) / 0.42) * 15)));
+    const flash = rpm > 0.985 && Math.floor(performance.now() / 90) % 2 === 0;
+    revEls.forEach((d, i) => d.classList.toggle('on', flash || i < lit));
+  }
+
+  // Only touch the page when a value really changes (faster)
+  let lastText = {};
+  const setText = (id, text) => { if (lastText[id] !== text) { lastText[id] = text; $(id).textContent = text; } };
+
+  function updateInfo({ lap, laps, pos, total, lapTime, best, speedKmh, gear, rpm, gapAhead, drs, drsZone, speedRatio }) {
+    setText('hud-lap', `LAP ${Math.min(lap, laps)} / ${laps}`);
+    setText('hud-pos', `P${pos} / ${total}`);
+    setText('hud-time', formatTime(lapTime === null ? 0 : lapTime));
+    setText('hud-best', formatTime(best));
+    setText('hud-gap-label', pos > 1 ? `GAP TO P${pos - 1}` : 'LEADING');
+    setText('hud-gap', pos > 1 && gapAhead !== null && gapAhead !== undefined ? '+' + gapAhead.toFixed(3) : '--');
+    setText('hud-speed', String(speedKmh));
+    setText('hud-gear', gear || 'N');
+    revLights(rpm || 0.3);
+    const d = $('hud-drs');
+    d.classList.toggle('open', !!drs);                 // green: DRS open
+    d.classList.toggle('zone', !drs && !!drsZone);     // outlined: in a DRS zone
+    // speed streaks fade in above about 250 km/h
+    $('speed-lines').style.opacity = Math.max(0, Math.min(0.85, ((speedRatio || 0) - 0.72) * 3.2)).toFixed(2);
   }
 
   /* ---------- Live timing tower (right side, like F1 TV) ----------
@@ -54,12 +85,12 @@ const Hud = (() => {
       el.classList.toggle('me', r.id === myId);
       el.children[0].textContent = i + 1;
       el.children[1].style.background = r.colorHex;
-      el.children[2].textContent = r.name;
+      el.children[2].textContent = r.id === myId ? 'YOU' : r.name.slice(0, 3).toUpperCase();   // 3-letter names like TV graphics
       el.children[3].textContent = r.gap;
       el.children[3].className = 'lb-info' + (r.fin ? ' fin' : '');
     });
   }
-  function clearTower() { $('leaderboard').innerHTML = ''; towerRows = []; }
+  function clearTower() { $('leaderboard').innerHTML = ''; towerRows = []; lastText = {}; revEls = null; }
 
   // Small banner when someone overtakes ("Ruchir overtakes Alex for P3")
   function overtake(text, mine) {

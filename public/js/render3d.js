@@ -40,9 +40,12 @@ const QUALITY = {
 // The helmet is at x = -2.8 (top at about 7.2), the halo just in front of it.
 //   cockpit: at the driver's eyes - steering wheel, gloves and the halo across the top
 //   tcam:    the onboard camera on top of the car, behind the helmet
+// order = the Space bar cycle: T-cam -> Chase cam -> Cockpit
+  //   chase:   behind and above the car (follows smoothly)
 const VIEWS = {
-  cockpit: { name: 'Cockpit',    eye: new THREE.Vector3(-2.0, 6.15, 0), look: new THREE.Vector3(98, -2.85, 0), fov: 86, helmet: false, wheel: true },
-  tcam:    { name: 'T-cam',      eye: new THREE.Vector3(-11.5, 10.2, 0), look: new THREE.Vector3(150, 1, 0), fov: 86, helmet: true, wheel: false }
+  tcam:    { name: 'T-cam',      eye: new THREE.Vector3(-11.5, 10.2, 0), look: new THREE.Vector3(150, 1, 0), fov: 86, helmet: true, wheel: false },
+  chase:   { name: 'Chase cam',  eye: new THREE.Vector3(-62, 22, 0), look: new THREE.Vector3(40, 5, 0), fov: 78, helmet: true, wheel: false, chase: true },
+  cockpit: { name: 'Cockpit',    eye: new THREE.Vector3(-2.0, 6.15, 0), look: new THREE.Vector3(98, -2.85, 0), fov: 86, helmet: false, wheel: true }
 };
 const WHEEL_POS = new THREE.Vector3(1.05, 4.9, 0);   // steering wheel, in front of the driver
 // Rear view (hold Tab / Y): camera above the front of the cockpit, looking backwards
@@ -59,6 +62,8 @@ let mirror = null, tv = null;
 let shake = 0, steerVis = 0, frameNo = 0;
 let camOverride = null;
 let maxPR = 1, curPR = 1, fpsTime = 0, fpsFrames = 0;   // automatic sharpness (keeps it smooth on slower phones)
+let chaseCam = null;
+let startWeather = 'clouds';   // sky preset: clear / clouds / overcast / rain
 let myParts = null;          // my helmet and visor (hidden in the Cockpit view)
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
 
@@ -72,6 +77,7 @@ function start(opts) {
     if (!renderer || currentAntialias !== q.antialias) createRenderer(opts.canvas);
     track = opts.track;
     myId = opts.myId;
+    startWeather = opts.weather || 'clouds';
     buildScene(opts.timeOfDay || 'day');
     opts.players.forEach((p, i) => addCar(p.id, p.colorHex, p.name, (p.slot !== undefined ? p.slot : i) + 1));
     return true;
@@ -154,11 +160,13 @@ function buildScene(timeOfDay) {
   scenery = buildScenery({ scene, track, quality: qName, world });
   window.__e1Build = { track: Math.round(t1 - t0), scenery: Math.round(performance.now() - t1) };
   env = setupEnvironment({
-    scene, renderer, quality: qName, timeOfDay, fogFar: q.fogFar,
+    scene, renderer, quality: qName, timeOfDay, weather: startWeather, fogFar: q.fogFar,
     floodlights: scenery.floodlights,
     nightMaterials: [...world.nightMaterials.map(mat => ({ mat, emissive: true, night: 0.9 })), ...scenery.nightMaterials]
   });
 
+  smoke = makePool(420, 9, THREE.AdditiveBlending);   // fades to nothing as it ages
+  sparks = makePool(260, 1.6, THREE.AdditiveBlending);
   setupMirror();
   setupTV();
   setupPost();
@@ -222,11 +230,47 @@ function setupPost() {
   composer.addPass(new OutputPass());
 }
 
+/* ---------------- Effects: tyre smoke, dust, sparks ----------------
+   Two small particle pools (cheap enough for Low graphics). */
+function makePool(count, size, blending, sizeAttenuation = true) {
+  const pos = new Float32Array(count * 3).fill(-9999), col = new Float32Array(count * 3);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const m = new THREE.PointsMaterial({ size, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, blending, sizeAttenuation, toneMapped: false });
+  const pts = new THREE.Points(g, m);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  return { pts, pos, col, vel: new Float32Array(count * 3), life: new Float32Array(count), max: new Float32Array(count), base: new Float32Array(count * 3), next: 0, count };
+}
+function emit(pool, x, y, z, vx, vy, vz, life, r, g, b) {
+  const i = pool.next; pool.next = (i + 1) % pool.count;
+  pool.pos.set([x, y, z], i * 3); pool.vel.set([vx, vy, vz], i * 3);
+  pool.base.set([r, g, b], i * 3); pool.life[i] = life; pool.max[i] = life;
+}
+function updatePool(pool, dt, gravity, drag) {
+  for (let i = 0; i < pool.count; i++) {
+    if (pool.life[i] <= 0) continue;
+    pool.life[i] -= dt;
+    const k = i * 3;
+    pool.vel[k + 1] -= gravity * dt;
+    const d = 1 - drag * dt;
+    pool.vel[k] *= d; pool.vel[k + 1] *= d; pool.vel[k + 2] *= d;
+    pool.pos[k] += pool.vel[k] * dt; pool.pos[k + 1] += pool.vel[k + 1] * dt; pool.pos[k + 2] += pool.vel[k + 2] * dt;
+    const f = Math.max(0, pool.life[i] / pool.max[i]);
+    pool.col[k] = pool.base[k] * f; pool.col[k + 1] = pool.base[k + 1] * f; pool.col[k + 2] = pool.base[k + 2] * f;
+    if (pool.life[i] <= 0) pool.pos[k + 1] = -9999;
+  }
+  pool.pts.geometry.attributes.position.needsUpdate = true;
+  pool.pts.geometry.attributes.color.needsUpdate = true;
+}
+let smoke = null, sparks = null;
+
 /* ---------------- Cars ---------------- */
 
 function addCar(id, colorHex, name, number) {
   const built = buildCar({ colorHex, number, name, quality: qName });
-  const { group, frontWheels } = built;
+  const { group, frontWheels, rearAxle, rearLight } = built;
   group.rotation.order = 'YZX';   // turn (yaw), then nose up/down (pitch), then lean (roll)
 
   // Floating name tag
@@ -258,7 +302,7 @@ function addCar(id, colorHex, name, number) {
   }
 
   scene.add(group);
-  cars.set(id, { group, frontWheels, label });
+  cars.set(id, { group, frontWheels, label, rearAxle, rearLight, roll: 0, lastX: null, lastY: null });
 }
 
 function removeCar(id) {
@@ -351,7 +395,26 @@ function frame(data) {
   // Move every car to its position
   data.cars.forEach(c => {
     const car = cars.get(c.id);
-    if (car) placeOnGround(car.group, c.x, c.y, c.a);
+    if (!car) return;
+    placeOnGround(car.group, c.x, c.y, c.a);
+    // wheels roll with the distance travelled
+    if (car.lastX !== null) {
+      const fx = Math.cos(c.a), fy = Math.sin(c.a);
+      const moved = (c.x - car.lastX) * fx + (c.y - car.lastY) * fy;
+      if (Math.abs(moved) < 60) car.roll += moved / 3.2;
+    }
+    car.lastX = c.x; car.lastY = c.y;
+    car.rearAxle.rotation.z = -car.roll;
+    car.frontWheels.forEach(fw => { fw.userData.spin.rotation.z = -car.roll * 1.03; });
+    // red rain light: bright and blinking when braking, dim otherwise
+    const blink = c.braking && (Math.floor(data.time * 8) % 2 === 0);
+    car.rearLight.material.color.setRGB(blink ? 6 : 1.2, blink ? 0.4 : 0.08, blink ? 0.3 : 0.05);
+    // name tags fade out after about 150 metres
+    if (c.id !== myId) {
+      const d = Math.hypot(c.x - camera.position.x, c.y - camera.position.z);
+      car.label.material.opacity = Math.max(0, Math.min(1, (1100 - d) / 250));
+      car.label.visible = car.label.material.opacity > 0.01;
+    }
   });
 
   // Steering: front wheels, steering wheel and gloves turn smoothly
@@ -382,13 +445,22 @@ function frame(data) {
   if (cockpit) cockpit.pivot.visible = !back && view.wheel;
   if (mine) {
     mine.group.updateMatrixWorld();
-    camera.position.copy(back ? REAR_EYE : view.eye).applyMatrix4(mine.group.matrixWorld);
+    const eye = tmpV2.copy(back ? REAR_EYE : view.eye).applyMatrix4(mine.group.matrixWorld);
     tmpV.copy(back ? REAR_LOOK : view.look).applyMatrix4(mine.group.matrixWorld);
-    camera.up.set(0, 1, 0).applyQuaternion(mine.group.quaternion);
+    if (view.chase && !back) {
+      // chase cam glides after the car instead of being fixed to it
+      if (!chaseCam || chaseCam.distanceTo(eye) > 300) chaseCam = eye.clone();
+      chaseCam.lerp(eye, Math.min(1, dt * 6));
+      camera.position.copy(chaseCam);
+      camera.up.set(0, 1, 0);
+    } else {
+      camera.position.copy(eye);
+      camera.up.set(0, 1, 0).applyQuaternion(mine.group.quaternion);
+    }
     camera.lookAt(tmpV);
     camera.rotateX(jitter() * 0.0035);
     camera.rotateY(jitter() * 0.0035);
-    camera.rotateZ(steerVis * speedRatio * 0.02 + jitter() * 0.002);  // tiny lean in corners
+    camera.rotateZ(steerVis * speedRatio * 0.035 + jitter() * 0.002);  // leans up to 2 degrees into corners
   }
   if (camOverride) {
     const o = camOverride, fx = Math.cos(me.a), fz = Math.sin(me.a), rx = -fz, rz = fx;
@@ -401,9 +473,35 @@ function frame(data) {
   // Field of view: fairly wide, and still wide enough on tall phone screens
   const aspect = w / Math.max(1, h);
   const vFov = 2 * Math.atan(Math.tan((view.fov * Math.PI / 180) / 2) / aspect) * 180 / Math.PI;
-  camera.fov = Math.max(50, Math.min(95, vFov)) + speedRatio * 3;
+  camera.fov = Math.max(50, Math.min(95, vFov)) + speedRatio * 8;   // widens at top speed
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
+
+  // Effects behind my car
+  if (mine && !camOverride) {
+    const fx = Math.cos(me.a), fz = Math.sin(me.a), rx = -fz, rz = fx;
+    const gh = mine.group.position.y;
+    const spd = Math.abs(me.speed || 0);
+    const rand = () => Math.random() - 0.5;
+    // tyre smoke: braking hard at speed, or sliding
+    if ((me.brake > 0.6 && spd > 260) || (me.drifting && spd > 300)) {
+      for (const s of [1, -1]) emit(smoke, me.x - fx * 17 + rx * 6.7 * s, gh + 2, me.y - fz * 17 + rz * 6.7 * s,
+        rand() * 20 - fx * 15, 10 + Math.random() * 8, rand() * 20 - fz * 15, 1.1, 0.32, 0.32, 0.34);
+    }
+    // dust cloud on grass / gravel
+    if (me.onGrass && spd > 60) {
+      for (let k = 0; k < 2; k++) emit(smoke, me.x - fx * 18 + rx * rand() * 14, gh + 1.5, me.y - fz * 18 + rz * rand() * 14,
+        rand() * 30 - fx * spd * 0.1, 12 + Math.random() * 10, rand() * 30 - fz * spd * 0.1, 1.3, 0.36, 0.3, 0.2);
+    }
+    // orange sparks from the floor: bumps, barriers and kerbs at speed
+    const hit = me.wallHit > 60 || me.bump > 30 || (onKerb && spd > 350 && Math.random() < 0.3);
+    if (hit) {
+      for (let k = 0; k < (me.wallHit > 60 ? 26 : 8); k++) emit(sparks, me.x - fx * 4 + rand() * 8, gh + 0.8, me.y - fz * 4 + rand() * 8,
+        rand() * 80 - fx * spd * 0.3, 15 + Math.random() * 35, rand() * 80 - fz * spd * 0.3, 0.5, 3, 1.4, 0.3);
+    }
+  }
+  updatePool(smoke, dt, -6, 1.2);
+  updatePool(sparks, dt, 120, 0.8);
 
   // Racing line colors in front of me
   world.racing.update(me.trackIndex, me.speed, data.racingLine);

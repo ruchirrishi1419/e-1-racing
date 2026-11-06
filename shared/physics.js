@@ -78,9 +78,11 @@
     forward -= forward * TUNING.airDrag * dt;
 
     // --- Grass slows you down ---
-    const limit = onGrass ? TUNING.grassMaxSpeed : TUNING.maxSpeed;
+    // DRS (rear wing flap open on a straight) gives about 6% more top speed
+    const top = TUNING.maxSpeed * (car.drs ? 1.06 : 1);
+    const limit = onGrass ? TUNING.grassMaxSpeed : top;
     if (forward > limit) forward += (limit - forward) * Math.min(1, 4 * dt);
-    forward = Math.max(-TUNING.maxReverse, Math.min(TUNING.maxSpeed, forward));
+    forward = Math.max(-TUNING.maxReverse, Math.min(top, forward));
 
     // --- Steering ---
     // The steering wheel moves smoothly towards full lock (keys are just on/off)

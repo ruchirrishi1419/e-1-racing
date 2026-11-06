@@ -388,7 +388,7 @@ export function buildTrack(ctx) {
   });
 
   // Red-and-white kerbs on the corners (both sides)
-  const kerbTex = canvasTex(64, 64, (g) => { g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#d62a20'; g.fillRect(0, 0, 64, 32); }, { repeat: true });
+  const kerbTex = canvasTex(64, 64, (g) => { g.fillStyle = '#f3f3f3'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#d4262b'; g.fillRect(0, 0, 64, 32); }, { repeat: true });   // palette: kerb red / line white
   const kerbMat = M({ map: kerbTex, roughness: 0.55 });
   const cornerRanges = rangesWhere(n, i => an.info[i].corner);
   [[-hw - 12, -hw + 1.5], [hw - 1.5, hw + 12]].forEach(([a, b]) => {
@@ -398,11 +398,12 @@ export function buildTrack(ctx) {
 
   // Outside of corners: blue/red striped run-off, then gravel trap
   const stripeTex = canvasTex(64, 128, (g) => {
-    g.fillStyle = '#1f5fd1'; g.fillRect(0, 0, 64, 128);
-    g.fillStyle = '#d62a20'; g.fillRect(0, 88, 64, 40);
+    // wide blue-and-grey striped run-off (palette: run-off blue #3F6D8F)
+    g.fillStyle = '#3f6d8f'; g.fillRect(0, 0, 64, 128);
+    g.fillStyle = '#5b6470'; g.fillRect(0, 64, 64, 64);
   }, { repeat: true });
   const stripeMat = M({ map: stripeTex, roughness: 0.7 });
-  const gravelMat = M({ map: tex('gravel_diff'), normalMap: std ? tex('gravel_nor', 1, false) : null, roughness: 1, color: '#d9cdb8' });
+  const gravelMat = M({ map: tex('gravel_diff'), normalMap: std ? tex('gravel_nor', 1, false) : null, roughness: 1, color: '#e6d2a6' });   // beige gravel (palette #C9B48A)
   [-1, 1].forEach(side => {
     const outsideRanges = rangesWhere(n, i => {
       const c = an.info[i];
@@ -487,6 +488,9 @@ export function buildTrack(ctx) {
 
   /* --- Barriers --- */
   const walls = buildBarriers(ctx, track, an, hm, group, M, nightMaterials);
+
+  /* --- 300 / 200 / 100 braking boards before big corners, DRS signs on long straights --- */
+  buildSigns(track, an, heightAt, group);
 
   /* --- Racing line (driving assist) --- */
   const racing = buildRacingLineMesh(track, line, heightAt, group);
@@ -601,7 +605,7 @@ function buildBarriers(ctx, track, an, hm, group, M, nightMaterials) {
       m.makeTranslation(t.x + t.ox * 4, t.h, t.y + t.oy * 4);
       inst.setMatrixAt(k, m);
       // every few stacks has a painted band, like real tyre walls
-      inst.setColorAt(k, col.set(k % 6 === 0 ? '#d62a20' : k % 6 === 3 ? '#f2f2f2' : '#1a1a1a'));
+      inst.setColorAt(k, col.set(Math.floor(k / 3) % 2 ? '#2453c9' : '#d4262b'));   // red / blue foam blocks
     });
     inst.castShadow = std;
     inst.receiveShadow = true;
@@ -717,4 +721,53 @@ function buildRacingLineMesh(track, line, heightAt, group) {
       colorAttr.needsUpdate = true;
     }
   };
+}
+
+/* ---------------- Braking boards and DRS signs ---------------- */
+function signTexture(text, bg, fg) {
+  return canvasTex(128, 96, (g, w, h) => {
+    g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.strokeStyle = fg; g.lineWidth = 4; g.strokeRect(4, 4, w - 8, h - 8);
+    g.fillStyle = fg; g.font = 'bold 54px "Chakra Petch", Arial Black, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, w / 2, h / 2 + 3, w - 16);
+  });
+}
+function buildSigns(track, an, heightAt, group) {
+  const n = track.path.length, wallD = track.halfWidth + track.runoff;
+  const UNITS_PER_M = 6.2;
+  const boards = [['300', 300], ['200', 200], ['100', 100]].map(([txt, m]) => ({ m, mat: new THREE.MeshBasicMaterial({ map: signTexture(txt, '#ffffff', '#111111') }) }));
+  const drsMat = new THREE.MeshBasicMaterial({ map: signTexture('DRS', '#0d1117', '#19e24a') });
+  const postMat = new THREE.MeshLambertMaterial({ color: '#cfd3d8' });
+  const panel = new THREE.PlaneGeometry(9, 6.75), post = new THREE.CylinderGeometry(0.4, 0.4, 7, 6).translate(0, 3.5, 0);
+  // place a sign beside the road at track index i, on the side 'side', facing the cars
+  function sign(i, side, mat) {
+    const s = an.info[(i + n) % n], b = an.info[(i + 1 + n) % n];
+    const d = track.halfWidth + Math.min(track.runoff - 6, 26);
+    const x = s.x + s.nx * d * side, y = s.y + s.ny * d * side, h = heightAt(x, y);
+    const g = new THREE.Group();
+    const p = new THREE.Mesh(panel, mat); p.position.y = 10;
+    const q = new THREE.Mesh(post, postMat);
+    g.add(p, q);
+    g.position.set(x, h, y);
+    g.rotation.y = -Math.atan2(b.y - s.y, b.x - s.x) - Math.PI / 2;   // panel faces the cars coming towards it
+    group.add(g);
+  }
+  // braking boards: before every corner that comes after a straight of 300 m or more
+  an.corners.forEach(c => {
+    if (c.angle < 0.6) return;
+    let straight = 0;
+    for (let k = 1; k < 200 && !an.info[(c.start - k + n) % n].corner; k++) straight++;
+    if (straight * 10 < 310 * UNITS_PER_M * 0.9) return;
+    const side = c.outside;   // boards stand on the outside of the corner
+    boards.forEach(bd => sign(c.start - Math.round(bd.m * UNITS_PER_M / 10), side, bd.mat));
+  });
+  // DRS signs at the start of the two longest straights
+  const runs = [];
+  let start = -1;
+  for (let i = 0; i < n * 2; i++) {
+    const on = !an.info[i % n].corner;
+    if (on && start < 0) start = i;
+    if (!on && start >= 0) { if (i - start > 120 && start < n) runs.push([start, i - start]); start = -1; }
+  }
+  runs.sort((a, b) => b[1] - a[1]).slice(0, 2).forEach(([s0]) => { sign(s0 + 8, 1, drsMat); sign(s0 + 8, -1, drsMat); });
 }

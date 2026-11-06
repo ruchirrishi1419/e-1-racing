@@ -19,17 +19,18 @@
   // The 10 teams. Players pick a team; the car's whole paint scheme (livery) comes with it.
   // (Kept under the old name COLORS so the rest of the game keeps working.)
   //   hex = main body color, second = big second color, accent = stripes, text = writing, wing = wings
-  const COLORS = [
-    { id: 'redbull',  label: 'Red Bull Racing', short: 'RBR', hex: '#1b2a4e', second: '#d71920', accent: '#ffc906', text: '#ffffff', wing: '#1b2a4e' },
-    { id: 'ferrari',  label: 'Ferrari',         short: 'FER', hex: '#dc0000', second: '#111111', accent: '#ffffff', text: '#ffffff', wing: '#dc0000' },
-    { id: 'mercedes', label: 'Mercedes',        short: 'MER', hex: '#0d0d0d', second: '#c6ccd2', accent: '#00d2be', text: '#ffffff', wing: '#0d0d0d' },
-    { id: 'mclaren',  label: 'McLaren',         short: 'MCL', hex: '#ff8000', second: '#141414', accent: '#47c7fc', text: '#141414', wing: '#141414' },
-    { id: 'aston',    label: 'Aston Martin',    short: 'AMR', hex: '#00594f', second: '#00352f', accent: '#cedc00', text: '#ffffff', wing: '#00594f' },
-    { id: 'alpine',   label: 'Alpine',          short: 'ALP', hex: '#0055a5', second: '#f276b5', accent: '#ffffff', text: '#ffffff', wing: '#0055a5' },
-    { id: 'williams', label: 'Williams',        short: 'WIL', hex: '#041e42', second: '#00a0de', accent: '#ffffff', text: '#ffffff', wing: '#00a0de' },
-    { id: 'rb',       label: 'Racing Bulls',    short: 'RB',  hex: '#eef1f6', second: '#1534cc', accent: '#e10600', text: '#1534cc', wing: '#1534cc' },
-    { id: 'haas',     label: 'Haas',            short: 'HAA', hex: '#f2f2f2', second: '#1b1b1b', accent: '#e10600', text: '#1b1b1b', wing: '#1b1b1b' },
-    { id: 'sauber',   label: 'Kick Sauber',     short: 'SAU', hex: '#151515', second: '#52e252', accent: '#52e252', text: '#52e252', wing: '#151515' }
+  const COLORS = [   // 11 teams, 2026 liveries (main body / accent / detail)
+    { id: 'redbull',  label: 'Red Bull Racing', short: 'RBR', hex: '#1e2a5a', second: '#e10600', accent: '#ffc906', text: '#ffffff', wing: '#1e2a5a' },
+    { id: 'rb',       label: 'Racing Bulls',    short: 'RB',  hex: '#f2f4f8', second: '#1534cc', accent: '#e4002b', text: '#1534cc', wing: '#1534cc' },
+    { id: 'haas',     label: 'Haas',            short: 'HAA', hex: '#f7f7f7', second: '#111111', accent: '#e10600', text: '#111111', wing: '#111111' },
+    { id: 'audi',     label: 'Audi',            short: 'AUD', hex: '#b9bec4', second: '#111111', accent: '#ff3b30', text: '#111111', wing: '#111111' },
+    { id: 'mercedes', label: 'Mercedes',        short: 'MER', hex: '#151515', second: '#c0c4c8', accent: '#00d2be', text: '#ffffff', wing: '#151515' },
+    { id: 'ferrari',  label: 'Ferrari',         short: 'FER', hex: '#e10600', second: '#ffffff', accent: '#111111', text: '#ffffff', wing: '#e10600' },
+    { id: 'alpine',   label: 'Alpine',          short: 'ALP', hex: '#0a5cd6', second: '#ff87bc', accent: '#111111', text: '#ffffff', wing: '#0a5cd6' },
+    { id: 'williams', label: 'Williams',        short: 'WIL', hex: '#00a0de', second: '#041e42', accent: '#ffffff', text: '#ffffff', wing: '#041e42' },
+    { id: 'cadillac', label: 'Cadillac',        short: 'CAD', hex: '#141414', second: '#e5e5e5', accent: '#9aa0a6', text: '#ffffff', wing: '#141414' },
+    { id: 'mclaren',  label: 'McLaren',         short: 'MCL', hex: '#ff7a00', second: '#111111', accent: '#47c7fc', text: '#111111', wing: '#111111' },
+    { id: 'aston',    label: 'Aston Martin',    short: 'AMR', hex: '#00665e', second: '#cedc00', accent: '#111111', text: '#ffffff', wing: '#00665e' }
   ];
 
   // A fresh racer standing on grid slot "slot"

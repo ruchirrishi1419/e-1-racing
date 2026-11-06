@@ -53,6 +53,7 @@ const Offline = (() => {
       trackId: track.id,
       laps: race.laps,
       timeOfDay: opts.timeOfDay || 'day',
+      weather: opts.weather || 'clouds',
       players: racers.map(p => ({ id: p.id, name: p.name, color: p.color, slot: p.race.slot }))
     });
 

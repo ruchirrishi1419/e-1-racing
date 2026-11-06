@@ -18,7 +18,8 @@
   let raceInfo = null;     // track + laps of the current race
 
   // Settings for Play Offline (remembered between races)
-  const offline = { trackId: 0, laps: 3, color: 'red', aiCount: 5, timeOfDay: 'day' };
+  const offline = { trackId: 0, laps: 3, color: 'red', aiCount: 5, timeOfDay: 'day', weather: 'clouds' };
+  const SKIES = [{ v: 'clear', label: '☀️ Clear' }, { v: 'clouds', label: '⛅ Clouds' }, { v: 'overcast', label: '☁️ Overcast' }, { v: 'rain', label: '🌧️ Light rain' }];
   const TIMES = [{ v: 'day', label: '☀️ Day' }, { v: 'sunset', label: '🌇 Sunset' }, { v: 'night', label: '🌙 Night' }];
 
   /* ---------------- Small helpers ---------------- */
@@ -279,6 +280,8 @@
       n => { offline.aiCount = n; saveOffline(); renderOffline(); });
     colorPicker($('offline-colors'), offline.color, {},
       c => { offline.color = c; saveOffline(); renderOffline(); });
+    choicePicker($('offline-weather'), SKIES, offline.weather || 'clouds', false,
+      v => { offline.weather = v; saveOffline(); renderOffline(); });
     choicePicker($('offline-tod'), TIMES, offline.timeOfDay, false,
       v => { offline.timeOfDay = v; saveOffline(); renderOffline(); });
   }
@@ -288,7 +291,7 @@
     Sound.init();
     mode = 'offline';
     Offline.start({ name: getName(false), color: offline.color, trackId: offline.trackId,
-                    laps: offline.laps, aiCount: offline.aiCount, timeOfDay: offline.timeOfDay }, RaceEvents);
+                    laps: offline.laps, aiCount: offline.aiCount, timeOfDay: offline.timeOfDay, weather: offline.weather }, RaceEvents);
   });
 
   /* ---------------- Online lobby ---------------- */
@@ -348,6 +351,8 @@
       n => socket.emit('updateSettings', { trackId: lobby.settings.trackId, laps: n }));
     choicePicker($('tod-picker'), TIMES, lobby.settings.timeOfDay || 'day', !isHost,
       v => socket.emit('updateSettings', { trackId: lobby.settings.trackId, laps: lobby.settings.laps, timeOfDay: v }));
+    choicePicker($('weather-picker'), SKIES, lobby.settings.weather || 'clouds', !isHost,
+      v => socket.emit('updateSettings', { trackId: lobby.settings.trackId, laps: lobby.settings.laps, weather: v }));
 
     $('settings-note').textContent = isHost ? '' : 'Only the host can change these';
     $('btn-start').classList.toggle('hidden', !isHost);
@@ -382,6 +387,7 @@
         serverNow: mode === 'offline' ? () => Date.now() : serverNow,
         quality: graphicsQuality(),
         timeOfDay: data.timeOfDay || 'day',
+        weather: data.weather || 'clouds',
         racingLine: getSetting('e1-line', 'on') === 'on'
       });
     },
