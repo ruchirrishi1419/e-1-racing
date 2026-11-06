@@ -139,9 +139,11 @@ function bar(a, b, radius) {
 
 /* ---------------- The car's shapes (built once, shared by all cars) ---------------- */
 
+// Proportions of a real modern F1 car: wide, low, with big fat tyres sticking out
+// on each side (about 2 m wide and 5.6 m long in real life).
 export const WHEELS = {
-  front: { x: 14, z: 6.9, r: 3.1, w: 3.0 },
-  rear: { x: -17, z: 6.7, r: 3.2, w: 3.6 }
+  front: { x: 14.5, z: 8.4, r: 3.4, w: 4.3 },
+  rear: { x: -17, z: 8.6, r: 3.75, w: 5.4 }
 };
 export const HELMET = { x: -2.8, y: 5.9, r: 1.25 };
 
@@ -149,82 +151,98 @@ let GEO = null;
 function buildGeometry() {
   // Driver's tub + nose (from behind the driver to the nose tip)
   const mono = loft([
-    { x: -9, w: 2.6, top: 4.5, bottom: 0.9, p: 3 },
-    { x: -6, w: 3.0, top: 4.9, bottom: 0.9, p: 3.2 },
-    { x: -2, w: 3.1, top: 4.8, bottom: 0.9, p: 3.2 },
-    { x: 2, w: 2.9, top: 4.9, bottom: 0.9, p: 3 },
-    { x: 6, w: 2.4, top: 4.6, bottom: 1.0, p: 2.8 },
-    { x: 10, w: 1.9, top: 4.0, bottom: 1.2, p: 2.6 },
-    { x: 15, w: 1.5, top: 3.3, bottom: 1.35, p: 2.4 },
-    { x: 20, w: 1.15, top: 2.6, bottom: 1.4, p: 2.3 },
-    { x: 24, w: 0.6, top: 2.0, bottom: 1.45, p: 2.2 },
+    { x: -9, w: 2.9, top: 4.6, bottom: 0.9, p: 3 },
+    { x: -6, w: 3.3, top: 5.0, bottom: 0.9, p: 3.2 },
+    { x: -2, w: 3.4, top: 4.9, bottom: 0.9, p: 3.2 },
+    { x: 2, w: 3.2, top: 5.0, bottom: 0.9, p: 3 },
+    { x: 6, w: 2.7, top: 4.7, bottom: 1.0, p: 2.8 },
+    { x: 10, w: 2.1, top: 4.1, bottom: 1.2, p: 2.6 },
+    { x: 15, w: 1.6, top: 3.3, bottom: 1.35, p: 2.4 },
+    { x: 20, w: 1.2, top: 2.6, bottom: 1.4, p: 2.3 },
+    { x: 24, w: 0.65, top: 2.0, bottom: 1.45, p: 2.2 },
     { x: 24.8, w: 0.15, top: 1.75, bottom: 1.6, p: 2 }
   ], 6, 32);
 
-  // Sidepods (the wide parts either side of the driver, with air intakes at the front)
+  // Sidepods: wide and bulky either side of the driver, narrowing towards the rear
   const pods = loft([
-    { x: -15, w: 1.8, top: 2.6, bottom: 1.0, p: 3 },
-    { x: -10, w: 4.0, top: 3.5, bottom: 0.9, p: 3.5 },
-    { x: -5, w: 5.3, top: 4.0, bottom: 0.9, p: 4.2 },
-    { x: -0.5, w: 5.8, top: 4.0, bottom: 0.9, p: 4.6 },
-    { x: 2.5, w: 5.6, top: 3.7, bottom: 1.1, p: 4.2 },
-    { x: 3.6, w: 4.6, top: 3.1, bottom: 1.5, p: 3 }
+    { x: -15, w: 2.6, top: 3.0, bottom: 1.0, p: 3 },
+    { x: -10.5, w: 5.0, top: 3.8, bottom: 0.9, p: 3.6 },
+    { x: -5, w: 6.7, top: 4.3, bottom: 0.9, p: 4.4 },
+    { x: -0.5, w: 7.1, top: 4.3, bottom: 0.9, p: 4.8 },
+    { x: 2.5, w: 6.9, top: 4.0, bottom: 1.1, p: 4.4 },
+    { x: 3.6, w: 5.9, top: 3.4, bottom: 1.5, p: 3 }
   ], 6, 32);
 
-  // Engine cover with the airbox above the driver's head
+  // Engine cover: broad shoulders that sweep up to the airbox above the driver
   const cover = loft([
-    { x: -24, w: 0.5, top: 2.6, bottom: 1.5, p: 2 },
-    { x: -20, w: 1.2, top: 3.8, bottom: 1.0, p: 2.4 },
-    { x: -15, w: 2.0, top: 5.5, bottom: 1.0, p: 2.6 },
-    { x: -11, w: 2.4, top: 7.0, bottom: 1.6, p: 2.6 },
-    { x: -8, w: 1.7, top: 7.9, bottom: 4.2, p: 2.4 },
-    { x: -6.4, w: 1.15, top: 7.6, bottom: 5.4, p: 2.2 },
-    { x: -5.9, w: 0.3, top: 7.0, bottom: 6.1, p: 2 }
+    { x: -24, w: 0.7, top: 3.0, bottom: 1.6, p: 2 },
+    { x: -20, w: 1.8, top: 4.4, bottom: 1.0, p: 2.6 },
+    { x: -15, w: 3.0, top: 6.2, bottom: 1.0, p: 3.0 },
+    { x: -11, w: 3.1, top: 7.6, bottom: 1.6, p: 2.8 },
+    { x: -8, w: 2.1, top: 8.4, bottom: 4.0, p: 2.4 },
+    { x: -6.4, w: 1.35, top: 8.0, bottom: 5.4, p: 2.2 },
+    { x: -5.9, w: 0.3, top: 7.3, bottom: 6.2, p: 2 }
   ], 6, 28);
 
   // Parts painted in the main color (no stickers)
   const paint = merge([
-    roundedPlate(-20, 5.4, -10.5, 8.3, 1.4, 0.25, 0),                // shark fin
-    roundedPlate(19.3, 0.6, 25.6, 3.0, 0.6, 0.3, 8.55),              // front wing end plates
-    roundedPlate(19.3, 0.6, 25.6, 3.0, 0.6, 0.3, -8.55),
-    wingElement(2.2, 0.35, 5.6, 21.0, 1.9, 5.4, -0.22),             // front wing flaps (each side)
-    wingElement(2.2, 0.35, 5.6, 21.0, 1.9, -5.4, -0.22),
-    wingElement(1.6, 0.3, 5.6, 19.9, 2.6, 5.4, -0.42),
-    wingElement(1.6, 0.3, 5.6, 19.9, 2.6, -5.4, -0.42),
-    roundedPlate(-25.2, 3.0, -19.4, 8.9, 0.8, 0.3, 4.45),            // rear wing end plates
-    roundedPlate(-25.2, 3.0, -19.4, 8.9, 0.8, 0.3, -4.45),
-    wingElement(1.9, 0.3, 8.6, -20.8, 7.9, 0, -0.35),               // rear wing top flap
+    roundedPlate(-21, 6.0, -11, 9.0, 1.4, 0.25, 0),                  // shark fin
+    roundedPlate(19.2, 0.6, 26.0, 3.4, 0.6, 0.3, 10.6),              // front wing end plates
+    roundedPlate(19.2, 0.6, 26.0, 3.4, 0.6, 0.3, -10.6),
+    wingElement(2.4, 0.35, 7.0, 21.0, 1.9, 6.7, -0.22),             // front wing flaps (each side)
+    wingElement(2.4, 0.35, 7.0, 21.0, 1.9, -6.7, -0.22),
+    wingElement(1.8, 0.3, 7.0, 19.9, 2.7, 6.7, -0.42),
+    wingElement(1.8, 0.3, 7.0, 19.9, 2.7, -6.7, -0.42),
+    // big rear wing end plates (tall, reaching down towards the diffuser)
+    roundedPlate(-25.6, 5.2, -20.6, 11.4, 1.6, 0.22, 7.7),
+    roundedPlate(-25.6, 5.2, -20.6, 11.4, 1.6, 0.22, -7.7),
+    wingElement(2.2, 0.35, 15.2, -21.0, 10.6, 0, -0.38),            // rear wing top flap (wide)
     new THREE.SphereGeometry(1, 12, 8).scale(0.8, 0.4, 0.34).translate(5.0, 5.6, 4.6),   // mirror pods
     new THREE.SphereGeometry(1, 12, 8).scale(0.8, 0.4, 0.34).translate(5.0, 5.6, -4.6)
   ]);
 
-  // Carbon fiber parts: floor, main wing planes, suspension arms, supports
+  // Carbon fiber parts: floor, wings, swan necks, diffuser, suspension
   const floorShape = new THREE.Shape();
-  [[-21, -1.8], [-14, -6.2], [6, -6.2], [9, -2.2], [9, 2.2], [6, 6.2], [-14, 6.2], [-21, 1.8]]
+  [[-25, -6.4], [-20.5, -5.9], [-13, -7.8], [6, -7.8], [9.5, -2.6], [9.5, 2.6], [6, 7.8], [-13, 7.8], [-20.5, 5.9], [-25, 6.4]]
     .forEach(([x, z], i) => (i === 0 ? floorShape.moveTo(x, z) : floorShape.lineTo(x, z)));
-  const floor = new THREE.ExtrudeGeometry(floorShape, { depth: 0.35, bevelEnabled: false }).rotateX(Math.PI / 2).translate(0, 0.95, 0);
+  const floor = new THREE.ExtrudeGeometry(floorShape, { depth: 0.4, bevelEnabled: false }).rotateX(Math.PI / 2).translate(0, 0.95, 0);
   const f = WHEELS.front, r = WHEELS.rear;
+  const fIn = f.z - f.w / 2 + 0.3, rIn = r.z - r.w / 2 + 0.3;   // inside edge of the wheels
+  // Diffuser: the black ramp under the back of the car, with vertical fins
+  const diffuser = [
+    new THREE.BoxGeometry(5.5, 0.35, 11.6).rotateZ(-0.32).translate(-23.4, 1.7, 0),
+    ...[-4.6, -2.8, -1.0, 1.0, 2.8, 4.6].map(z => new THREE.BoxGeometry(5.0, 1.4, 0.18).translate(-23.6, 1.75, z)),
+    // endplate lower struts that curve down to the floor edge
+    bar([-24.6, 5.4, 7.6], [-23.4, 1.2, 6.2], 0.22), bar([-24.6, 5.4, -7.6], [-23.4, 1.2, -6.2], 0.22),
+    new THREE.BoxGeometry(0.3, 0.9, 11.6).translate(-26.0, 2.6, 0)
+  ];
   const carbon = merge([
     floor,
-    wingElement(4.6, 0.45, 17.0, 22.6, 0.95, 0, -0.04),            // front wing main plane
-    wingElement(3.6, 0.5, 8.6, -22.2, 6.6, 0, -0.08),              // rear wing main plane
-    wingElement(2.4, 0.3, 8.0, -22.5, 3.2, 0, -0.1),               // lower beam wing
-    bar([-22.2, 1.6, 0], [-22.2, 6.7, 0], 0.32),                    // rear wing pillar
+    ...diffuser,
+    wingElement(4.8, 0.45, 21.0, 22.6, 0.95, 0, -0.04),            // front wing main plane (full width)
+    wingElement(3.8, 0.55, 15.2, -22.4, 9.2, 0, -0.08),            // rear wing main plane (wide)
+    wingElement(2.6, 0.35, 12.0, -22.6, 4.4, 0, -0.1),             // beam wing below it
+    // swan-neck supports: come up from the engine cover and hold the wing from above
+    bar([-18.8, 5.6, 1.3], [-21.4, 10.7, 1.3], 0.28), bar([-18.8, 5.6, -1.3], [-21.4, 10.7, -1.3], 0.28),
+    bar([-21.4, 10.7, 1.3], [-22.4, 9.9, 1.3], 0.22), bar([-21.4, 10.7, -1.3], [-22.4, 9.9, -1.3], 0.22),
     bar([18, 1.6, 0.4], [21, 1.1, 0.4], 0.18), bar([18, 1.6, -0.4], [21, 1.1, -0.4], 0.18), // nose to wing
     // front suspension (upper and lower arms, both sides)
-    bar([11, 3.6, 1.3], [f.x, f.r + 1.0, f.z - 1.2], 0.17), bar([16, 3.2, 1.0], [f.x, f.r + 1.0, f.z - 1.2], 0.17),
-    bar([11, 1.8, 1.3], [f.x, f.r - 1.0, f.z - 1.2], 0.17), bar([16, 1.7, 1.0], [f.x, f.r - 1.0, f.z - 1.2], 0.17),
-    bar([11, 3.6, -1.3], [f.x, f.r + 1.0, -f.z + 1.2], 0.17), bar([16, 3.2, -1.0], [f.x, f.r + 1.0, -f.z + 1.2], 0.17),
-    bar([11, 1.8, -1.3], [f.x, f.r - 1.0, -f.z + 1.2], 0.17), bar([16, 1.7, -1.0], [f.x, f.r - 1.0, -f.z + 1.2], 0.17),
+    bar([11, 3.6, 1.4], [f.x, f.r + 1.0, fIn], 0.19), bar([16.5, 3.2, 1.1], [f.x, f.r + 1.0, fIn], 0.19),
+    bar([11, 1.8, 1.4], [f.x, f.r - 1.0, fIn], 0.19), bar([16.5, 1.7, 1.1], [f.x, f.r - 1.0, fIn], 0.19),
+    bar([11, 3.6, -1.4], [f.x, f.r + 1.0, -fIn], 0.19), bar([16.5, 3.2, -1.1], [f.x, f.r + 1.0, -fIn], 0.19),
+    bar([11, 1.8, -1.4], [f.x, f.r - 1.0, -fIn], 0.19), bar([16.5, 1.7, -1.1], [f.x, f.r - 1.0, -fIn], 0.19),
     // rear suspension
-    bar([-14, 3.4, 1.8], [r.x, r.r + 1.0, r.z - 1.4], 0.17), bar([-19, 3.0, 1.2], [r.x, r.r + 1.0, r.z - 1.4], 0.17),
-    bar([-14, 1.7, 2.0], [r.x, r.r - 1.0, r.z - 1.4], 0.17), bar([-19, 1.6, 1.2], [r.x, r.r - 1.0, r.z - 1.4], 0.17),
-    bar([-14, 3.4, -1.8], [r.x, r.r + 1.0, -r.z + 1.4], 0.17), bar([-19, 3.0, -1.2], [r.x, r.r + 1.0, -r.z + 1.4], 0.17),
-    bar([-14, 1.7, -2.0], [r.x, r.r - 1.0, -r.z + 1.4], 0.17), bar([-19, 1.6, -1.2], [r.x, r.r - 1.0, -r.z + 1.4], 0.17),
+    bar([-14, 3.6, 2.6], [r.x, r.r + 1.1, rIn], 0.19), bar([-19.5, 3.2, 1.8], [r.x, r.r + 1.1, rIn], 0.19),
+    bar([-14, 1.8, 2.8], [r.x, r.r - 1.1, rIn], 0.19), bar([-19.5, 1.7, 1.8], [r.x, r.r - 1.1, rIn], 0.19),
+    bar([-14, 3.6, -2.6], [r.x, r.r + 1.1, -rIn], 0.19), bar([-19.5, 3.2, -1.8], [r.x, r.r + 1.1, -rIn], 0.19),
+    bar([-14, 1.8, -2.8], [r.x, r.r - 1.1, -rIn], 0.19), bar([-19.5, 1.7, -1.8], [r.x, r.r - 1.1, -rIn], 0.19),
     // mirror stalks
     bar([4.2, 4.3, 2.4], [4.9, 5.5, 4.2], 0.14), bar([4.2, 4.3, -2.4], [4.9, 5.5, -4.2], 0.14),
+    // the T-shaped camera on top of the airbox (behind the T-cam, so it never blocks the view)
+    new THREE.BoxGeometry(0.6, 1.0, 0.6).translate(-12.6, 8.4, 0),
+    new THREE.BoxGeometry(0.7, 0.35, 3.0).translate(-12.6, 9.0, 0),
     // rear crash structure
-    new THREE.CylinderGeometry(0.5, 0.8, 4, 10).rotateZ(Math.PI / 2).translate(-24, 1.9, 0)
+    new THREE.CylinderGeometry(0.55, 0.9, 4, 10).rotateZ(Math.PI / 2).translate(-24.5, 2.9, 0)
   ]);
 
   // Halo: the curved safety bar around the driver's head, with a centre pillar
@@ -293,7 +311,7 @@ function buildGeometry() {
   const visor = new THREE.SphereGeometry(HELMET.r * 1.03, 16, 6, Math.PI - 0.95, 1.9, 1.15, 0.55).translate(HELMET.x, HELMET.y, 0);
 
   // Rear rain light (glows red)
-  const rearLight = new THREE.BoxGeometry(0.4, 0.7, 1.4).translate(-26.1, 2.1, 0);
+  const rearLight = new THREE.BoxGeometry(0.4, 0.9, 1.6).translate(-26.7, 2.9, 0);   // middle of the diffuser, like a real car
 
   return { mono, pods, cover, paint, carbon, halo, mirrorGlass, front: wheelParts(f.r, f.w), rear, helmet, visor, rearLight, stickers: buildStickerGeometry() };
 }
@@ -338,13 +356,13 @@ function stickerPlane(index, width, height, centre, uDir, vDir) {
 
 function buildStickerGeometry() {
   return merge([
-    stickerPlane(0, 7.2, 1.4, [-22.25, 7.15, 0], [0, 0, 1], [1, 0, 0]),       // rear wing (read from behind)
-    stickerPlane(1, 3.2, 1.6, [-22.3, 6.0, 4.62], [1, 0, 0], [0, 1, 0]),      // rear end plate, right side
-    stickerPlane(1, 3.2, 1.6, [-22.3, 6.0, -4.62], [-1, 0, 0], [0, 1, 0]),    // rear end plate, left side
-    stickerPlane(2, 4.6, 0.75, [21.1, 2.3, 5.4], [0, 0, 1], [1, 0, 0]),       // front wing flaps
-    stickerPlane(2, 4.6, 0.75, [21.1, 2.3, -5.4], [0, 0, 1], [1, 0, 0]),
-    stickerPlane(3, 4.4, 1.0, [22.4, 1.9, 8.75], [1, 0, 0], [0, 1, 0]),       // front end plates
-    stickerPlane(3, 4.4, 1.0, [22.4, 1.9, -8.75], [-1, 0, 0], [0, 1, 0])
+    stickerPlane(0, 12.0, 1.9, [-22.6, 9.78, 0], [0, 0, 1], [1, 0, 0]),       // rear wing (read from behind)
+    stickerPlane(1, 4.0, 2.0, [-23.1, 8.4, 7.84], [1, 0, 0], [0, 1, 0]),      // rear end plate, right side
+    stickerPlane(1, 4.0, 2.0, [-23.1, 8.4, -7.84], [-1, 0, 0], [0, 1, 0]),    // rear end plate, left side
+    stickerPlane(2, 5.8, 0.8, [21.1, 2.35, 6.7], [0, 0, 1], [1, 0, 0]),       // front wing flaps
+    stickerPlane(2, 5.8, 0.8, [21.1, 2.35, -6.7], [0, 0, 1], [1, 0, 0]),
+    stickerPlane(3, 4.8, 1.1, [22.6, 2.0, 10.8], [1, 0, 0], [0, 1, 0]),       // front end plates
+    stickerPlane(3, 4.8, 1.1, [22.6, 2.0, -10.8], [-1, 0, 0], [0, 1, 0])
   ]);
 }
 
