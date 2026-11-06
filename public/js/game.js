@@ -151,6 +151,12 @@ const Game = (() => {
 
   function go() { locked = false; goTime = performance.now(); radio.pos = me.pos; }
 
+  // Team name of a car (from its livery colour), e.g. 'Red Bull Racing'
+  function teamName(p) {
+    const t = RaceRules.COLORS.find(c => c.hex === p.colorHex);
+    return t ? t.label : 'The car';
+  }
+
   /* ---------------- Team radio ----------------
      "Position gained, you are P2" / "Position lost" / "1 second behind, push!" / "car behind, defend!"
      (the finishing messages are sent from main.js) */
@@ -265,9 +271,9 @@ const Game = (() => {
       const behind = players.get(order[myIndex + 1]), mine = players.get(myId);
       const tb = timeAt(mine, behind.progress);
       me.gapBehind = tb !== null && !behind.fin ? Math.max(0, (now - tb) / 1000) : null;
-      me.behindName = behind.name;
+      me.behindName = teamName(behind);   // radio says the TEAM, not the player name
     } else me.gapBehind = null;
-    me.aheadName = myIndex > 0 ? players.get(order[myIndex - 1]).name : '';
+    me.aheadName = myIndex > 0 ? teamName(players.get(order[myIndex - 1])) : '';
     radioCheck(now);
 
     // Overtakes: a car that was behind is now directly in front

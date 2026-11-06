@@ -111,9 +111,13 @@ const Offline = (() => {
       racers.forEach(p => {
         if (!p.ai) return;
         const car = p.ai.car;
+        // every AI can see all the other cars (AI and you), so it can attack, defend and give room
+        const others = racers.filter(o => o !== p).map(o => o.ai
+          ? { x: o.ai.car.x, y: o.ai.car.y, vx: o.ai.car.vx, vy: o.ai.car.vy }
+          : { x: me.x, y: me.y, vx: me.vx, vy: me.vy });
         // 3 small physics steps = 0.05 seconds
         for (let i = 0; i < 3; i++) {
-          Physics.step(car, AI.drive(car, track, p.ai.brain, STEP), STEP, track);
+          Physics.step(car, AI.drive(car, track, p.ai.brain, STEP, others), STEP, track);
           racers.forEach(o => {
             if (o === p) return;
             Physics.bump(car, o.ai ? o.ai.car : { x: me.x, y: me.y, vx: me.vx, vy: me.vy });
