@@ -31,7 +31,7 @@ import { setupEnvironment } from './env3d.js';
 
 /* ---------------- Quality presets (Graphics: Low / Medium / High) ---------------- */
 const QUALITY = {
-  low:    { pixelRatio: 2,    antialias: true,  fogFar: 2600, post: false, samples: 0, mirror: 160, mirrorEvery: 3, tv: 0,   tvEvery: 0 },
+  low:    { pixelRatio: 2,    antialias: true,  fogFar: 16000, post: false, samples: 0, mirror: 160, mirrorEvery: 3, tv: 0,   tvEvery: 0 },
   medium: { pixelRatio: 1,    antialias: false, fogFar: 3600, post: true,  samples: 2, mirror: 256, mirrorEvery: 2, tv: 256, tvEvery: 8 },
   high:   { pixelRatio: 1.5,  antialias: false, fogFar: 4800, post: true,  samples: 4, mirror: 384, mirrorEvery: 1, tv: 384, tvEvery: 4 }
 };
@@ -96,7 +96,7 @@ function createRenderer(canvasEl) {
     canvasEl = fresh;
   }
   canvas = canvasEl;
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: q.antialias, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: q.antialias, powerPreference: 'high-performance', logarithmicDepthBuffer: true });   // (stops far-away surfaces flickering)
   currentAntialias = q.antialias;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.NeutralToneMapping;   // natural colors that stay bright and true
@@ -145,7 +145,7 @@ function buildScene(timeOfDay) {
   cockpit = null;
   myParts = null;
 
-  camera = new THREE.PerspectiveCamera(70, 1, 0.12, q.fogFar * 1.7 + 800);
+  camera = new THREE.PerspectiveCamera(70, 1, 0.5, q.fogFar * 1.75 + 2000);   // sees very far
   camera.layers.enable(1);          // layer 1 = crowd and trees (skipped by mirrors and TV cameras)
 
   renderer.shadowMap.enabled = qName !== 'low';

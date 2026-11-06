@@ -93,7 +93,8 @@ export function setupEnvironment(opts) {
   }
 
   // Fog makes far-away things fade into the sky (also hides where the world ends)
-  scene.fog = new THREE.Fog(P.fallbackFog, opts.fogFar * (grey ? 0.12 : 0.25), opts.fogFar * (grey ? 0.75 : 1));
+  // only a very light haze right at the horizon, so you can see far (a bit more in overcast / rain)
+  scene.fog = new THREE.Fog(P.fallbackFog, opts.fogFar * (grey ? 0.2 : 0.6), opts.fogFar * (grey ? 0.75 : 1.1));
   scene.background = new THREE.Color(P.fallbackFog);
   renderer.toneMappingExposure = P.exposure;
 

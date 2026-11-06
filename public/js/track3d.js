@@ -63,6 +63,19 @@ export function grayTex(name, mean = 118, contrast = 1.25) {
   return t;
 }
 
+// A clean flat colour with a fine grain (the "Bible" look: no photo textures)
+export function grainTex(base, amount = 14, size = 256) {
+  return canvasTex(size, size, (g, w, h) => {
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    const img = g.getImageData(0, 0, w, h), p = img.data;
+    for (let i = 0; i < p.length; i += 4) {
+      const n = (Math.random() - 0.5) * amount;
+      p[i] = Math.max(0, Math.min(255, p[i] + n)); p[i + 1] = Math.max(0, Math.min(255, p[i + 1] + n)); p[i + 2] = Math.max(0, Math.min(255, p[i + 2] + n));
+    }
+    g.putImageData(img, 0, 0);
+  }, { repeat: true });
+}
+
 // Simple canvas texture helper
 export function canvasTex(w, h, draw, opts = {}) {
   const c = document.createElement('canvas');
@@ -329,9 +342,10 @@ export function buildTrack(ctx) {
   const tuv = terrain.attributes.uv;
   for (let i = 0; i < tuv.count; i++) tuv.setXY(i, tp.getX(i) / 160, tp.getZ(i) / 160);
   terrain.computeVertexNormals();
-  const groundMat = M({ map: tex(groundTex + '_diff'), normalMap: std ? tex(groundTex + '_nor', 1, false) : null, vertexColors: true, roughness: 0.95, metalness: 0 });
-  if (track.theme.ground === 'concrete') { groundMat.map = grayTex('concrete_floor_diff', 140, 0.9); groundMat.map.repeat.set(1, 1); }   // gray city pavement
-  if (groundTex === 'sparse_grass') groundMat.color = new THREE.Color('#9fd27c');   // a fresher green
+  // clean flat ground colours (grass #4F8A3C, sand, or city pavement)
+  const groundColor = { grass: '#5a9a3f', rock: '#5a9a3f', sand: '#d8bd85', concrete: '#9aa0a8' }[track.theme.ground] || '#5a9a3f';
+  const groundMat = M({ map: grainTex(groundColor, 18), vertexColors: true, roughness: 0.95, metalness: 0 });
+  void groundTex;
   const ground = new THREE.Mesh(terrain, groundMat);
   ground.receiveShadow = true;
   group.add(ground);
@@ -373,9 +387,46 @@ export function buildTrack(ctx) {
     group.add(strip);
   }
 
+  /* --- Horizon: endless flat ground and a ring of rolling hills all around --- */
+  {
+    const cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
+    const R0 = Math.hypot(B.x1 - B.x0, B.y1 - B.y0) / 2 + 400;
+    const far = new THREE.Mesh(new THREE.CircleGeometry(R0 + 9000, 64).rotateX(-Math.PI / 2), M({ color: groundColor, roughness: 1 }));
+    far.position.set(cx, -8, cy);
+    group.add(far);
+    const desert = track.theme.ground === 'sand';
+    const SEG = 200, RINGS = 7, pos = [], col = [], idx = [];
+    const low = new THREE.Color(desert ? '#d2b47c' : '#4f8a3c'), high = new THREE.Color(desert ? '#e6cf9c' : '#2f6b2d');
+    const noise = makeNoise(track.id + 31);
+    for (let j = 0; j <= RINGS; j++) {
+      const f = j / RINGS, R = R0 + 300 + f * 5200;
+      for (let i = 0; i <= SEG; i++) {
+        const a = (i / SEG) * Math.PI * 2, x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+        // hills rise from the flat ground, peak in the middle of the ring, then fall away
+        const hh = Math.sin(f * Math.PI) * (desert ? 260 : 620) * (0.45 + noise(x * 0.35, y * 0.35));
+        pos.push(x, hh - 8, y);
+        const c = low.clone().lerp(high, Math.min(1, hh / 500));
+        col.push(c.r, c.g, c.b);
+      }
+    }
+    for (let j = 0; j < RINGS; j++) for (let i = 0; i < SEG; i++) {
+      const a = j * (SEG + 1) + i, b = a + 1, c = a + SEG + 1, d = c + 1;
+      idx.push(a, b, c, b, d, c);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const hills = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    hills.frustumCulled = false;
+    group.add(hills);
+  }
+
   /* --- Road --- */
   const all = [[0, n - 1], [n - 1, 0]];
-  const asphalt = M({ map: grayTex('asphalt_track_diff'), normalMap: std ? tex('asphalt_track_nor', 1, false) : null, roughness: 0.82, metalness: 0, color: '#ffffff' });
+  // smooth dark asphalt with a fine grain (palette asphalt #3A3E45)
+  const asphalt = M({ map: grainTex('#484c54', 16), roughness: 0.82, metalness: 0, color: '#ffffff' });
   const road = new THREE.Mesh(ribbon(track, an, heightAt, all, -hw, hw, 0.6, 'tile'), asphalt);
   road.receiveShadow = true;
   group.add(road);
@@ -399,8 +450,8 @@ export function buildTrack(ctx) {
   // Outside of corners: blue/red striped run-off, then gravel trap
   const stripeTex = canvasTex(64, 128, (g) => {
     // wide blue-and-grey striped run-off (palette: run-off blue #3F6D8F)
-    g.fillStyle = '#3f6d8f'; g.fillRect(0, 0, 64, 128);
-    g.fillStyle = '#5b6470'; g.fillRect(0, 64, 64, 64);
+    g.fillStyle = '#2a62d4'; g.fillRect(0, 0, 64, 128);
+    g.fillStyle = '#8c95a3'; g.fillRect(0, 64, 64, 64);
   }, { repeat: true });
   const stripeMat = M({ map: stripeTex, roughness: 0.7 });
   const gravelMat = M({ map: tex('gravel_diff'), normalMap: std ? tex('gravel_nor', 1, false) : null, roughness: 1, color: '#e6d2a6' });   // beige gravel (palette #C9B48A)
@@ -411,8 +462,16 @@ export function buildTrack(ctx) {
     });
     // (never wider than the space up to the barrier - Monaco is very narrow)
     const a1 = side * (hw + 12), a2 = side * Math.min(hw + 52, wall - 6), a3 = side * (wall - 4);
-    const stripe = new THREE.Mesh(ribbon(track, an, heightAt, outsideRanges, Math.min(a1, a2), Math.max(a1, a2), 0.55, 60), stripeMat);
+    // stripes right beside the road all the way round...
+    const stripe = new THREE.Mesh(ribbon(track, an, heightAt, all, Math.min(a1, a2), Math.max(a1, a2), 0.55, 60), stripeMat);
     stripe.receiveShadow = true; group.add(stripe);
+    // ...and a wide striped run-off up to the barrier where there's no gravel trap
+    const a4 = side * (wall - 6);
+    if (Math.abs(a4) > Math.abs(a2) + 6 && track.theme.ground !== 'concrete') {
+      const otherRanges = rangesWhere(n, i => { const c = an.info[i]; return !(c.corner && (c.turn > 0 ? -1 : 1) === side); });
+      const wide = new THREE.Mesh(ribbon(track, an, heightAt, otherRanges, Math.min(a2, a4), Math.max(a2, a4), 0.5, 60), stripeMat);
+      wide.receiveShadow = true; group.add(wide);
+    }
     if (Math.abs(a3) > Math.abs(a2) + 10 && track.theme.ground !== 'concrete') {
       const gravel = new THREE.Mesh(ribbon(track, an, heightAt, outsideRanges, Math.min(a2, a3), Math.max(a2, a3), 0.4, 'tile'), gravelMat);
       gravel.receiveShadow = true; group.add(gravel);
@@ -530,7 +589,7 @@ function buildBarriers(ctx, track, an, hm, group, M, nightMaterials) {
   const pos = [], uv = [], idx = [];
   const railPos = [], railIdx = [];
   const tyreSpots = [];
-  sides.forEach(({ pts }) => {
+  sides.forEach(({ side, pts }) => {
     let run = 0;
     for (let k = 0; k < pts.length; k++) {
       const a = pts[k], b = pts[(k + 1) % pts.length];
@@ -544,7 +603,9 @@ function buildBarriers(ctx, track, an, hm, group, M, nightMaterials) {
       }
       const base = pos.length / 3;
       pos.push(a.x, a.h, a.y, b.x, b.h, b.y, b.x, b.h + HGT, b.y, a.x, a.h + HGT, a.y);
-      const u0 = run / 160, u1 = (run + len) / 160;
+      // (the right-hand wall is seen from the other side, so run the picture backwards there - otherwise the writing is mirrored)
+      const dir = side === 1 ? -1 : 1;
+      const u0 = dir * run / 160, u1 = dir * (run + len) / 160;
       uv.push(u0, 0, u1, 0, u1, 1, u0, 1);
       idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
       if (!city) {
@@ -578,7 +639,7 @@ function buildBarriers(ctx, track, an, hm, group, M, nightMaterials) {
     }, { repeat: true });
     boardMat = M({ map: cityTex, roughness: 0.9, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: cityTex, emissiveIntensity: 0 });
   } else {
-    const ad = adStrip();
+    const ad = greenWall();
     boardMat = M({ map: ad, roughness: 0.6, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: ad, emissiveIntensity: 0 });
   }
   nightMaterials.push(boardMat);
@@ -770,4 +831,20 @@ function buildSigns(track, an, heightAt, group) {
     if (!on && start >= 0) { if (i - start > 120 && start < n) runs.push([start, i - start]); start = -1; }
   }
   runs.sort((a, b) => b[1] - a[1]).slice(0, 2).forEach(([s0]) => { sign(s0 + 8, 1, drsMat); sign(s0 + 8, -1, drsMat); });
+}
+
+/* ---------------- The green ad wall with yellow E1 logos ---------------- */
+let greenWallTex = null;
+export function greenWall() {
+  if (greenWallTex) return greenWallTex;
+  greenWallTex = canvasTex(1024, 128, (g, w, h) => {
+    g.fillStyle = '#178a3e'; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, 0, w, h * 0.2);
+    g.fillStyle = '#ffd21f';
+    g.font = 'italic bold 84px "Russo One", Arial Black, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    [0.125, 0.375, 0.625, 0.875].forEach(u => g.fillText('E1', u * w, h / 2 + 4));
+  }, { repeat: true });
+  greenWallTex.userData.shared = true;
+  return greenWallTex;
 }

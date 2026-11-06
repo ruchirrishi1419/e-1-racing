@@ -100,6 +100,14 @@
   $('btn-controls').addEventListener('click', () => { Sound.init(); showControls(false); });
   $('btn-controls-close').addEventListener('click', hideControls);
 
+  // 3D preview of the chosen team's car (the 3D file loads a moment after the page)
+  function showTeamCar(canvasId, teamId, name) {
+    const team = RaceRules.COLORS.find(c => c.id === teamId);
+    $(canvasId + '-name').textContent = team ? team.label : '';
+    if (window.TeamPreview) TeamPreview.show($(canvasId), teamId, name);
+    else setTimeout(() => window.TeamPreview && TeamPreview.show($(canvasId), teamId, name), 400);
+  }
+
   // A row of buttons for a list of choices, e.g. Day / Sunset / Night
   function choicePicker(box, choices, selected, disabled, onPick) {
     box.innerHTML = '';
@@ -278,6 +286,7 @@
       n => { offline.laps = n; saveOffline(); renderOffline(); });
     numberPicker($('offline-ai'), 1, 9, offline.aiCount, false,
       n => { offline.aiCount = n; saveOffline(); renderOffline(); });
+    showTeamCar('offline-car', offline.color, getName(false));
     colorPicker($('offline-colors'), offline.color, {},
       c => { offline.color = c; saveOffline(); renderOffline(); });
     choicePicker($('offline-weather'), SKIES, offline.weather || 'clouds', false,
@@ -332,6 +341,7 @@
     const me = lobby.players.find(p => p.id === socket.id);
     const takenBy = {};
     lobby.players.forEach(p => { takenBy[p.color] = p.name; });
+    if (me) showTeamCar('lobby-car', me.color, me.name);
     colorPicker($('color-picker'), me && me.color, takenBy, c => {
       socket.emit('chooseColor', c, res => {
         $('lobby-error').textContent = res && !res.ok ? res.error : '';

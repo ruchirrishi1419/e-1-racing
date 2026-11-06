@@ -106,6 +106,8 @@
       <div class="lobby-grid">
         <div class="panel">
           <h2>Your team</h2>
+          <!-- the chosen team's car, turning slowly -->
+          <div class="team-preview"><canvas id="offline-car"></canvas><span id="offline-car-name"></span></div>
           <div id="offline-colors" class="color-picker"></div>
           <h3>AI cars</h3>
           <div id="offline-ai" class="lap-picker"></div>
@@ -142,6 +144,7 @@
           <h2>Players <span id="player-count">0/10</span></h2>
           <ul id="player-list" class="player-list"></ul>
           <h2>Your team</h2>
+          <div class="team-preview"><canvas id="lobby-car"></canvas><span id="lobby-car-name"></span></div>
           <div id="color-picker" class="color-picker"></div>
           <p id="lobby-error" class="error"></p>
         </div>
@@ -312,5 +315,6 @@
   </script>
   <script type="module" src="js/render3d.js"></script>
   <script type="module" src="js/podium3d.js"></script>
+  <script type="module" src="js/teampreview3d.js"></script>
 </body>
 </html>

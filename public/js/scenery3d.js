@@ -23,7 +23,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTex, adStrip, SPONSORS } from './track3d.js';
 
 const QUALITY = {
-  low:    { crowd: 2500,  trees: 700,  buildings: 120, lod: 1700, bridges: 1 },
+  low:    { crowd: 2500,  trees: 1400, buildings: 160, lod: 9000, bridges: 1 },   // lod = how far things are still drawn (no pop-in)
   medium: { crowd: 7000,  trees: 2000, buildings: 260, lod: 2700, bridges: 2 },
   high:   { crowd: 15000, trees: 4000, buildings: 420, lod: 3800, bridges: 3 }
 };
@@ -697,7 +697,20 @@ export function buildScenery(ctx) {
       treeSpots.push({ x: tx, y: ty, h: heightAt(tx, ty), s: 0.6 + rand() * 0.9 });
     }
   }
-  if (kind !== 'buildings') addTrees(kind, treeSpots);
+  // A thick wall of trees close to the track on both sides (behind the fence),
+  // wherever there's no grandstand, building or other part of the circuit
+  if (kind !== 'buildings') {
+    for (const sd of [1, -1]) {
+      for (let i = 0; i < n; i += 3) {
+        for (let row = 0; row < 2; row++) {
+          const sp = spot(i, sd, wallD + 55 + row * 55 + rand() * 40);
+          if (!free(sp.x, sp.y, 0, 7, 7, wallD + 40)) continue;
+          treeSpots.push({ x: sp.x + (rand() - 0.5) * 14, y: sp.y + (rand() - 0.5) * 14, h: sp.h, s: 0.85 + rand() * 0.75 });
+        }
+      }
+    }
+    addTrees(kind, treeSpots);
+  }
   else addCity();
   // a few far-away buildings on the other tracks too
   if (kind !== 'buildings') addFarBuildings();
@@ -721,8 +734,10 @@ export function buildScenery(ctx) {
     } else {
       geo = [
         merge([colored(new THREE.CylinderGeometry(1.8, 2.6, 16, 6).translate(0, 8, 0), '#5a4330'),
-               colored(new THREE.IcosahedronGeometry(14, 0).scale(1, 0.9, 1).translate(0, 26, 0), '#2f6b2d'),
-               colored(new THREE.IcosahedronGeometry(9, 0).translate(6, 33, 4), '#3b8236')]),
+               // round, bushy crown made of three soft blobs
+               colored(new THREE.IcosahedronGeometry(17, 1).scale(1, 0.85, 1).translate(0, 28, 0), '#2e6e2c'),
+               colored(new THREE.IcosahedronGeometry(12, 1).translate(9, 34, 4), '#3d8a37'),
+               colored(new THREE.IcosahedronGeometry(11, 1).translate(-8, 33, -5), '#357d32')]),
         merge([colored(new THREE.CylinderGeometry(1.4, 2.0, 10, 6).translate(0, 5, 0), '#5a4330'),
                colored(new THREE.ConeGeometry(11, 30, 7).translate(0, 22, 0), '#24592c')])
       ];
