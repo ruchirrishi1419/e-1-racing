@@ -434,6 +434,7 @@
       if (d.id === myId()) {
         Sound.finish();
         Hud.message('WINNER!', 'You won the race!', 3500);
+        Radio.say('Congratulations! You won the race!');   // (the radio box shows your team name)
       } else {
         Hud.message('WINNER!', `${d.name} wins! You have ${d.graceMs / 1000}s to finish`, 3000);
       }
@@ -445,6 +446,9 @@
       if (d.id === myId()) {
         Sound.finish();
         Hud.message(`${Hud.ordinal(d.place)} PLACE`, `Finished in ${Hud.formatTime(d.time)}`, 3000);
+        // podium radio only for P2 and P3 (P1 is handled by "winner"; no podium for P4 and lower)
+        if (d.place === 2) Radio.say('Congratulations! P2, you got a podium!', 'Congratulations! P 2, you got a podium!');
+        if (d.place === 3) Radio.say('Congratulations! You are P3, you got a podium!', 'Congratulations! You are P 3, you got a podium!');
       } else {
         Hud.toast(`${d.name} finished ${Hud.ordinal(d.place)}`);
         Game.cheer(0.6);

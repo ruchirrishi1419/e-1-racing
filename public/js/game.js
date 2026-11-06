@@ -111,6 +111,12 @@ const Game = (() => {
     myCar = Physics.createCar(mine.x, mine.y, mine.a);
     camera = { x: myCar.x, y: myCar.y };
     me = { lap: 0, pos: mine.pos, best: null, cur: null, curAt: 0, fin: false };
+    radio = { pos: null, pending: null, since: 0, aheadArmed: true, behindArmed: true, lastAhead: 0, lastBehind: 0 };
+    if (window.Radio) {
+      Radio.reset();
+      const t = RaceRules.COLORS.find(c => c.hex === mine.colorHex);
+      Radio.setTeam(t ? { label: t.label, hex: t.hex } : { label: 'E1', hex: '#1b4fd6' });
+    }
     finishRemaining = null;
 
     trackPath = new Path2D();
@@ -143,9 +149,41 @@ const Game = (() => {
     Sound.startEngine();
   }
 
-  function go() { locked = false; goTime = performance.now(); }
+  function go() { locked = false; goTime = performance.now(); radio.pos = me.pos; }
+
+  /* ---------------- Team radio ----------------
+     "Position gained, you are P2" / "Position lost" / "1 second behind, push!" / "car behind, defend!"
+     (the finishing messages are sent from main.js) */
+  let radio = { pos: null, pending: null, since: 0, aheadArmed: true, behindArmed: true, lastAhead: 0, lastBehind: 0 };
+  function radioCheck(now) {
+    if (!goTime || now - goTime < 5000 || me.fin || !window.Radio) return;
+    // position change: wait until it has stayed the same for 1.5 s (no spam when two cars swap back and forth)
+    if (me.pos !== radio.pos) {
+      if (radio.pending !== me.pos) { radio.pending = me.pos; radio.since = now; }
+      else if (now - radio.since > 1500) {
+        if (radio.pos !== null) {
+          if (me.pos < radio.pos) Radio.say('Position gained. You are P' + me.pos + '.', 'Position gained. You are P ' + me.pos + '.');
+          else Radio.say('Position lost. You are P' + me.pos + '.', 'Position lost. You are P ' + me.pos + '.');
+        }
+        radio.pos = me.pos;
+      }
+    } else radio.pending = null;
+    // closing in on the car ahead
+    const ga = me.gapAhead;
+    if (ga !== null && ga !== undefined && ga < 1.0 && radio.aheadArmed && now - radio.lastAhead > 25000) {
+      Radio.say('You are one second behind ' + me.aheadName + '. Push now!');
+      radio.aheadArmed = false; radio.lastAhead = now;
+    } else if (ga === null || ga === undefined || ga > 1.6) radio.aheadArmed = true;
+    // a car is closing in behind me
+    const gb = me.gapBehind;
+    if (gb !== null && gb !== undefined && gb < 1.0 && radio.behindArmed && now - radio.lastBehind > 25000) {
+      Radio.say(me.behindName + ' is one second behind you. Defend!');
+      radio.behindArmed = false; radio.lastBehind = now;
+    } else if (gb === null || gb === undefined || gb > 1.6) radio.behindArmed = true;
+  }
 
   function stop() {
+    if (window.Radio) Radio.reset();
     running = false;
     cancelAnimationFrame(rafId);
     Sound.stopEngine();
@@ -220,6 +258,17 @@ const Game = (() => {
       return { id, name: p.name, colorHex: p.colorHex, gap, fin: p.fin };
     });
     Hud.updateTower(rows, myId);
+
+    // ---- Team radio: positions and gaps ----
+    const myIndex = order.indexOf(myId);
+    if (myIndex >= 0 && myIndex < order.length - 1) {
+      const behind = players.get(order[myIndex + 1]), mine = players.get(myId);
+      const tb = timeAt(mine, behind.progress);
+      me.gapBehind = tb !== null && !behind.fin ? Math.max(0, (now - tb) / 1000) : null;
+      me.behindName = behind.name;
+    } else me.gapBehind = null;
+    me.aheadName = myIndex > 0 ? players.get(order[myIndex - 1]).name : '';
+    radioCheck(now);
 
     // Overtakes: a car that was behind is now directly in front
     if (goTime && now - goTime > 4000 && prevOrder.length) {
@@ -763,5 +812,8 @@ const Game = (() => {
     ctx.closePath();
   }
 
-  return { start, go, stop, onState, removePlayer, correct, setLights, cheer };
+  // for automatic testing only
+  const debugRadio = () => ({ pos: me.pos, gapAhead: me.gapAhead, gapBehind: me.gapBehind, radio });
+
+  return { start, go, stop, onState, removePlayer, correct, setLights, cheer, debugRadio };
 })();

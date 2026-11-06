@@ -248,6 +248,40 @@ const Sound = (() => {
     cheer(1.2);
   };
 
+  /* Team radio sounds, like real F1 team radio:
+     opening = a crackle of static, then the two-tone "bee-boop" chirp
+     closing = a short click with a bit of static */
+  function radioBeep(end) {
+    if (!ctx) return;
+    if (!end) {
+      burst(0.16, 0.16, 'bandpass', 2600);                 // crackle as the radio opens
+      tone(1850, 0.08, 'sine', 0.09, 0.14);                 // "bee"
+      tone(1250, 0.12, 'sine', 0.09, 0.24);                 // "boop"
+      burst(0.05, 0.08, 'highpass', 3500, 0.38);            // little click
+    } else {
+      burst(0.06, 0.12, 'bandpass', 2200);                  // click off
+      tone(1250, 0.06, 'sine', 0.06, 0.04);
+    }
+  }
+  // Quiet radio hiss while a message is playing
+  let radioHiss = null;
+  function radioStatic(on) {
+    if (!ctx) return;
+    if (on && !radioHiss) {
+      const src = noiseSource(), f = filter('bandpass', 2800, 0.9), g = gain(0);
+      src.connect(f).connect(g).connect(master);
+      src.start();
+      g.gain.setTargetAtTime(0.018, now(), 0.05);
+      radioHiss = { src, g };
+    } else if (!on && radioHiss) {
+      const h = radioHiss; radioHiss = null;
+      h.g.gain.setTargetAtTime(0, now(), 0.05);
+      setTimeout(() => { try { h.src.stop(); } catch (e) { /* already stopped */ } }, 300);
+    }
+  }
+  const isMuted = () => muted;
+  const getVolume = () => volume;
+
   function toggleMute() {
     muted = !muted;
     if (master) master.gain.value = muted ? 0 : volume;
@@ -259,5 +293,5 @@ const Sound = (() => {
   }
 
   return { init, startEngine, updateEngine, stopEngine, updateOthers, updateCrowd, cheer, stopWorld,
-           countdown, go, lap, bestLap, crash, bump, click, finish, firework, toggleMute, setVolume };
+           countdown, go, lap, bestLap, crash, bump, click, finish, firework, radioBeep, radioStatic, isMuted, getVolume, toggleMute, setVolume };
 })();
