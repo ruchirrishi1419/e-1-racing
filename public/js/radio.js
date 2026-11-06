@@ -61,10 +61,10 @@ const Radio = (() => {
         const u = new SpeechSynthesisUtterance(m.speech);
         if (voice) u.voice = voice;
         u.rate = 1.05; u.pitch = 0.9;
-        u.volume = typeof Sound !== 'undefined' ? Sound.getVolume() : 0.8;
+        u.volume = 1;   // radio voice always at 100%
         u.onend = done; u.onerror = done;
         speechSynthesis.speak(u);
-      }, 650);   // wait for the opening chirp to finish
+      }, 1050);   // wait for the three beeps to finish
       setTimeout(done, 7500);        // just in case the voice never says it's finished
     } else {
       setTimeout(done, 2600);        // no voice: just show the box for a while

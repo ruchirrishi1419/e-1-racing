@@ -137,15 +137,15 @@ const Sound = (() => {
     ramp(e.lp.frequency, 1200 + d.rpm * 6000 + (d.throttle ? 1500 : 0), 0.05);
     ramp(e.roarF.frequency, f * 3, 0.05);
     const load = d.throttle ? 1 : 0.45;
-    ramp(e.out.gain, (0.05 + d.rpm * 0.14) * load + 0.02, 0.04);
+    ramp(e.out.gain, ((0.05 + d.rpm * 0.14) * load + 0.02) * ENGINE_MIX * duck(), 0.04);
     ramp(e.gw.gain, 0.012 + d.speedRatio * 0.02, 0.1);
-    ramp(e.roarG.gain, d.throttle ? 0.05 * d.rpm : 0.005, 0.05);
+    ramp(e.roarG.gain, (d.throttle ? 0.05 * d.rpm : 0.005) * ENGINE_MIX * duck(), 0.05);
 
     // Gear change: a tiny cut in sound and a pop (the pitch drop happens by itself as RPM falls)
     if (d.shifted) {
       e.out.gain.cancelScheduledValues(now());
       e.out.gain.setValueAtTime(e.out.gain.value * 0.35, now());
-      e.out.gain.setTargetAtTime((0.05 + d.rpm * 0.14) * load, now() + 0.05, 0.03);
+      e.out.gain.setTargetAtTime((0.05 + d.rpm * 0.14) * load * ENGINE_MIX * duck(), now() + 0.05, 0.03);
       burst(0.06, d.shifted > 0 ? 0.15 : 0.22, 'highpass', 1800);
     }
     // Crackles and pops when lifting off at high revs
@@ -193,7 +193,7 @@ const Sound = (() => {
       ramp(v.o2.frequency, f * 2.01, 0.05);
       ramp(v.lp.frequency, 900 + c.rpm * 3500, 0.1);
       const loud = Math.pow(Math.max(0, 1 - c.dist / 1100), 2);
-      ramp(v.g.gain, 0.09 * loud, 0.08);
+      ramp(v.g.gain, 0.09 * loud * ENGINE_MIX * duck(), 0.08);
       if (v.pan) ramp(v.pan.pan, Math.max(-1, Math.min(1, c.pan)), 0.08);
     });
   }
@@ -248,30 +248,39 @@ const Sound = (() => {
     cheer(1.2);
   };
 
+  // Mix: engines at 50%, and down to 35% of that while the team radio is talking
+  const ENGINE_MIX = 0.5;
+  let radioOn = false;
+  const duck = () => (radioOn ? 0.35 : 1);
+
   /* Team radio sounds, like real F1 team radio:
      opening = a crackle of static, then the two-tone "bee-boop" chirp
      closing = a short click with a bit of static */
   function radioBeep(end) {
     if (!ctx) return;
     if (!end) {
-      burst(0.16, 0.16, 'bandpass', 2600);                 // crackle as the radio opens
-      tone(1850, 0.08, 'sine', 0.09, 0.14);                 // "bee"
-      tone(1250, 0.12, 'sine', 0.09, 0.24);                 // "boop"
-      burst(0.05, 0.08, 'highpass', 3500, 0.38);            // little click
+      burst(0.18, 0.4, 'bandpass', 2600);                  // crackle as the radio opens
+      // three beeps: beep - beep - beep
+      [0.2, 0.42, 0.64].forEach(t => {
+        tone(1600, 0.14, 'sine', 0.45, t);
+        tone(1600, 0.14, 'square', 0.08, t);
+      });
+      burst(0.06, 0.25, 'highpass', 3500, 0.86);            // little click, then the voice
     } else {
       burst(0.06, 0.12, 'bandpass', 2200);                  // click off
-      tone(1250, 0.06, 'sine', 0.06, 0.04);
+      tone(1250, 0.1, 'sine', 0.3, 0.04);
     }
   }
   // Quiet radio hiss while a message is playing
   let radioHiss = null;
   function radioStatic(on) {
+    radioOn = on;   // turns the engines down while the radio talks
     if (!ctx) return;
     if (on && !radioHiss) {
       const src = noiseSource(), f = filter('bandpass', 2800, 0.9), g = gain(0);
       src.connect(f).connect(g).connect(master);
       src.start();
-      g.gain.setTargetAtTime(0.018, now(), 0.05);
+      g.gain.setTargetAtTime(0.03, now(), 0.05);
       radioHiss = { src, g };
     } else if (!on && radioHiss) {
       const h = radioHiss; radioHiss = null;
